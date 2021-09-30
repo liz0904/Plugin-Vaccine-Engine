@@ -1,7 +1,17 @@
 # -*- coding:utf-8 -*-
 
+import os
 import sys
-from engine.kavcore import k2rsa
+
+s = os.path.dirname(
+    os.path.dirname(
+        os.path.abspath(__file__)
+    )
+) + os.sep + 'Engine' + os.sep + 'kavcore'
+
+sys.path.append(s)
+
+import k2rsa
 
 if __name__=='__main__':
     pu_fname='key.pkr'

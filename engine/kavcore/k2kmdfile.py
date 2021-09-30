@@ -30,10 +30,10 @@ def make(src_fname, debug=False):
 
     # Simple RSA를 사용하기 위해 공개키와 개인키를 로딩한다.
     # 공개키를 로딩한다.
-    rsa_pu = k2rsa.read_key('../../key.pkr')
+    rsa_pu = k2rsa.read_key('engine/plugins/key.pkr')
 
     # 개인키를 로딩한다.
-    rsa_pr = k2rsa.read_key('../../key.skr')
+    rsa_pr = k2rsa.read_key('engine/plugins/key.skr')
 
     if not (rsa_pr and rsa_pu):  # 키 파일을 찾을 수 없다
         if debug:
