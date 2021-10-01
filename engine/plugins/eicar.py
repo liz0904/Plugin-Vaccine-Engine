@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 
 import os
-import hashlib
+import crytolib
 
 # KavMain 클래스
 class KavMain:
@@ -22,9 +22,7 @@ class KavMain:
             size = os.path.getsize(filename)  # 검사 대상 파일 크기를 구한다.
             if size == 68:  # EICAR Test 악성코드의 크기와 일치하는가?
                 # 크기가 일치한다면 MD5 해시 계산
-                m=hashlib.md5()
-                m.update(mm[:68])
-                fmd5=m.hexdigest()
+                fmd5=crytolib.md5(mm[:68])
 
                 # 파일에서 얻은 해시 값과 EICAR Test 악성코드의 해시 값이 일치하는가?
                 if fmd5 == '44d88612fea8a8f36de82e1278abb02f':

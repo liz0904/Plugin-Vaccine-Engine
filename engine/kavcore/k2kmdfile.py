@@ -7,11 +7,12 @@ import random
 import shutil
 import struct
 import sys
-import sys
 import zlib
 import k2rc4
 import k2rsa
 import k2timelib
+import marshal
+import imp
 
 # rsa 개인키를 이용해서 주어진 파일을 암호화하여 KMD 파일을 생성
 # 입력값 : src_fname - 암호화 대상 파일
