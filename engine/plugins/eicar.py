@@ -27,11 +27,9 @@ class KavMain:
     # 악성코드를 검사한다.
     # 입력값 : filehandle  - 파일 핸들
     #         filename    - 파일 이름
-    #         fileformat  - 파일 포맷
-    #         filename_ex - 파일 이름 (압축 내부 파일 이름)
     # 리턴값 : (악성코드 발견 여부, 악성코드 이름, 악성코드 ID) 등등
     # ---------------------------------------------------------------------
-    def scan(self, filehandle, filename, fileformat, filename_ex):  # 악성코드 검사
+    def scan(self, filehandle, filename):  # 악성코드 검사
         try:
             mm = filehandle
 

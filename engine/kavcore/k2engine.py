@@ -229,42 +229,41 @@ class EngineInstance:
         else:
             return False
 
-    def scan(self, filename, *callback):
+    def scan(self, filename):
         if self.debug:
             print('[*] KavMain.scan(): ')
 
-            try:
-                ret=False
-                vname=''
-                mid=-1
-                eid=-1
+        try:
+            ret=False
+            vname=''
+            mid=-1
+            eid=-1
 
-                fp=open(filename, 'rb')
-                mm=mmap.mmap(fp.fileno(), 0, access=mmap.ACCESS_READ)
+            fp=open(filename, 'rb')
+            mm=mmap.mmap(fp.fileno(), 0, access=mmap.ACCESS_READ)
+            for i,inst in enumerate(self.kavmain_inst):
+                try:
+                    ret,vname, mid=inst.scan(mm, filename)
+                    print(ret)
+                    if ret:
+                        eid=i
 
-                for i,inst in enumerate(self.kavmain_inst):
-                    try:
-                        ret,vname, mid=inst.scan(mm, filename)
-                        if ret:
-                            eid=i
+                        if self.debug:
+                            print('[-] %s.scan(): %s' % (inst.__module__, vname))
+                            break
+                except AttributeError:
+                    continue
 
-                            if self.debug:
-                                print('[-] %s.scan(): %s' % (inst.__module__, vname))
+            if mm:
+                mm.close()
+            if fp:
+                fp.close()
 
-                                break
-                    except AttributeError:
-                        continue
+            return ret, vname, mid, eid
+        except IOError:
+            pass
 
-                if mm:
-                    mm.close()
-                if fp:
-                    fp.close()
-
-                return ret, vname, eid
-            except IOError:
-                pass
-
-            return False, '', -1, -1
+        return False, '', -1, -1
 
 
     # 플러그인 엔진에게 악성코드 치료를 요청한다.

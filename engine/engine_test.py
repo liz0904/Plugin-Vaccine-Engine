@@ -25,8 +25,8 @@ if k2.set_plugins('plugins'):
         vlist=kav.listvirus()
         print("[*] Not used Callback: %d"%len(vlist))
 
-        ret, vname, mid, eid=kav.scan('eicar.txt')
-        if ret:
-            kav.disinfect('dummy.txt', mid, eid)
+        ret, vname, mid, eid=kav.scan('sexy.txt')
+        #if ret:
+         #   kav.disinfect('sexy.txt', mid, eid)
 
         kav.uninit()
