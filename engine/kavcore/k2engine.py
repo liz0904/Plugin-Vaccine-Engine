@@ -1,8 +1,9 @@
 # -*- coding:utf-8 -*-
-
+import mmap
 import os
 import StringIO
 import datetime
+import types
 
 import k2kmdfile
 import k2rsa
@@ -117,8 +118,100 @@ class EngineInstance:
 
         self.kavmain_inst=[]    #모든 플러그인의 KaVMain 인스턴스
 
+    def init(self):
+        t_kavmain_inst=[]   #최종 인스턴스 리스트
+        if self.debug:
+            print('[*] KavMain.init(): ')
 
-    # 백신 엔진의 인스턴스를 생성
+        for inst in self.kavmain_inst:
+            try:
+                #플러그인 엔진 init 함수 호출
+                ret=inst.init(self.plugins_path)
+                if not ret:
+                    t_kavmain_inst.append(inst)
+                    if self.debug:
+                        print('[-] %s.init(): %d' %(inst.__module__, ret))
+            except AttributeError:
+                continue
+
+        self.kavmain_inst=t_kavmain_inst    #최종 KavMain 인스턴스 등록
+
+        if len(self.kavmain_inst):
+            if self.debug:
+                print('[*] Count of KavMain.init(): %d' % (len(self.kavmain_inst)))
+            return True
+        else:
+            return False
+
+    def uninit(self):
+        if self.debug:
+            print('[*] KavMain.uninit(): ')
+
+        for inst in self.kavmain_inst:
+            try:
+                ret=inst.uninit()
+                if self.debug:
+                    print('[-] %s.uninit: %d' % (inst.__module__, ret))
+            except AttributeError:
+                continue
+
+    def getinfo(self):
+        ginfo = []  # 플러그인 엔진 정보
+
+        if self.debug:
+            print '[*] KavMain.getinfo() :'
+
+        for inst in self.kavmain_inst:
+            try:
+                ret = inst.getinfo()
+                ginfo.append(ret)
+
+                if self.debug:
+                    print('    [-] %s.getinfo() :' % inst.__module__)
+                    for key in ret.keys():
+                        print('        - %-10s : %s' % (key, ret[key]))
+            except AttributeError:
+                continue
+
+        return ginfo
+
+    # 플러그인 엔진이 진단/치료 할 수 있는 악성코드 목록을 얻음
+    # 리턴값 : 악성코드 목록 (콜백함수 사용시 아무런 값도 없음)
+    def listvirus(self, *callback):
+        vlist = []  # 진단/치료 가능한 악성코드 목록
+
+        argc = len(callback)  # 가변인자 확인
+
+        if argc == 0:  # 인자가 없으면
+            cb_fn = None
+        elif argc == 1:  # callback 함수가 존재하는지 체크
+            cb_fn = callback[0]
+        else:  # 인자가 너무 많으면 에러
+            return []
+
+        if self.debug:
+            print('[*] KavMain.listvirus() :')
+
+        for inst in self.kavmain_inst:
+            try:
+                ret = inst.listvirus()
+
+                # callback 함수가 있다면 callback 함수 호출
+                if isinstance(cb_fn, types.FunctionType):
+                    cb_fn(inst.__module__, ret)
+                else:  # callback 함수가 없으면 악성코드 목록을 누적하여 리턴
+                    vlist += ret
+
+                if self.debug:
+                    print('    [-] %s.listvirus() :' % inst.__module__)
+                    for vname in ret:
+                        print('        - %s' % vname)
+            except AttributeError:
+                continue
+
+        return vlist
+
+    # 백신엔진의 인스턴스를 생성
     # 인자값 : kmd_modules - 메모리에 로딩된 KMD 모듈 리스트
     # 리턴값 : 성공 여부
     def create(self, kmd_modules):  # 백신 엔진 인스턴스를 생성
@@ -135,3 +228,88 @@ class EngineInstance:
             return True
         else:
             return False
+
+    def scan(self, filename, *callback):
+        if self.debug:
+            print('[*] KavMain.scan(): ')
+
+            try:
+                ret=False
+                vname=''
+                mid=-1
+                eid=-1
+
+                fp=open(filename, 'rb')
+                mm=mmap.mmap(fp.fileno(), 0, access=mmap.ACCESS_READ)
+
+                for i,inst in enumerate(self.kavmain_inst):
+                    try:
+                        ret,vname, mid=inst.scan(mm, filename)
+                        if ret:
+                            eid=i
+
+                            if self.debug:
+                                print('[-] %s.scan(): %s' % (inst.__module__, vname))
+
+                                break
+                    except AttributeError:
+                        continue
+
+                if mm:
+                    mm.close()
+                if fp:
+                    fp.close()
+
+                return ret, vname, eid
+            except IOError:
+                pass
+
+            return False, '', -1, -1
+
+
+    # 플러그인 엔진에게 악성코드 치료를 요청한다.
+    # 입력값 : filename   - 악성코드 치료 대상 파일 이름
+    #          malware_id - 감염된 악성코드 ID
+    #          engine_id  - 악성코드를 발견한 플러그인 엔진 ID
+    # 리턴값 : 악성코드 치료 성공 여부
+    def disinfect(self, filename, malware_id, engine_id):
+        ret = False
+
+        if self.debug:
+            print('[*] KavMain.disinfect() :')
+
+        try:
+            # 악성코드를 진단한 플러그인 엔진에게만 치료를 요청
+            inst = self.kavmain_inst[engine_id]
+            ret = inst.disinfect(filename, malware_id)
+
+            if self.debug:
+                print('    [-] %s.disinfect() : %s' % (inst.__module__, ret))
+        except AttributeError:
+            pass
+
+        return ret
+
+    def get_signum(self):
+        signum=0 #진단/치료 가능한 악성코드 수
+
+        for inst in self.kavmain_inst:
+            try:
+                ret=inst.getinfo()
+
+                if signum in ret:
+                    signum+=ret['signum']
+            except AttributeError:
+                continue
+
+        return signum
+
+    def get_version(self):
+        return self.max_datetime
+
+    def set_options(self, options=None):
+        if options:
+            self.set_options['opt_list']=options.opt_list
+        else:
+            self.set_options['opt_list']=False
+        return True

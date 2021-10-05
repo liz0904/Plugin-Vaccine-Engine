@@ -6,12 +6,27 @@ import sys
 
 import kavcore.k2engine
 
-k2=kavcore.k2engine.Engine(debug=True)
-k2.set_plugins('plugins')
+def listvirus_callback(plugin_name, vnames):
+    for vname in vnames:
+        print("%-50s [%s.kmd]"%(vname, plugin_name))
 
-'''
-if k2.set_plugins('plugins'):   #플러그인 엔진 경로 정의
-    kav=k2.create_instance()    #백신 엔진 인스턴스 생성
+k2=kavcore.k2engine.Engine(debug=True)
+
+if k2.set_plugins('plugins'):
+    kav=k2.create_instance()
     if kav:
-        print("[* Success: create instance]")
-'''
+        print('[*] Success: create_instance')
+
+        ret=kav.init()
+
+        vlist=kav.listvirus(listvirus_callback) #플러그인 바이러스 목록 출력
+        print('[*] Used Callback: %d'%len(vlist))
+
+        vlist=kav.listvirus()
+        print("[*] Not used Callback: %d"%len(vlist))
+
+        ret, vname, mid, eid=kav.scan('eicar.txt')
+        if ret:
+            kav.disinfect('dummy.txt', mid, eid)
+
+        kav.uninit()
