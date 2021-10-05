@@ -23,7 +23,7 @@ class Engine:
         self.max_datetime = datetime.datetime(1980, 1, 1, 0, 0, 0, 0)
 
     #주어진 경로에서 플러그인 엔진 로딩 준비
-    def set_plugins(self,plugins_path):
+    def set_plugins(self, plugins_path):
         self.plugins_path=plugins_path  #플러그인 경로 저장
 
         #공개키 로딩
@@ -120,6 +120,8 @@ class EngineInstance:
 
     def init(self):
         t_kavmain_inst=[]   #최종 인스턴스 리스트
+        print(len(self.kavmain_inst))
+
         if self.debug:
             print('[*] KavMain.init(): ')
 

@@ -1,5 +1,4 @@
 # -*- coding:utf-8 -*-
-#시발 얜 왜 ㅇ안되노오오옹
 
 import os
 import sys
@@ -26,7 +25,7 @@ if k2.set_plugins('plugins'):
         print("[*] Not used Callback: %d"%len(vlist))
 
         ret, vname, mid, eid=kav.scan('eicar.txt')
-        #if ret:
-            #kav.disinfect('dummy.txt', mid, eid)
+        if ret:
+            kav.disinfect('dummy.txt', mid, eid)
 
         kav.uninit()
