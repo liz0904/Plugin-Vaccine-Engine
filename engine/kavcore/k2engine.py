@@ -244,7 +244,6 @@ class EngineInstance:
             for i,inst in enumerate(self.kavmain_inst):
                 try:
                     ret,vname, mid=inst.scan(mm, filename)
-                    print(ret)
                     if ret:
                         eid=i
 

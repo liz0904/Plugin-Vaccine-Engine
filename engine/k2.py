@@ -6,8 +6,7 @@
 import os
 import sys
 from optparse import OptionParser
-from engine import kavcore
-from kavcore import k2engine
+import kavcore.k2engine
 
 from ctypes import windll, Structure, c_short, c_ushort,  byref
 
@@ -312,7 +311,7 @@ def print_result(result):
 
 
 def print_usage():
-    print('\nUsage: k2.py path[s[ [options]')
+    print('\nUsage: k2.py path[s] [options]')
 
 
 def parser_options():
