@@ -201,13 +201,9 @@ def print_options():
 
 # scan의 콜백 함수
 def scan_callback(ret_value):
+    real_name=ret_value['filename']
 
-    fs = ret_value['file_struct']
-
-    if len(fs.get_additional_filename()) != 0:
-        disp_name = '%s (%s)' % (fs.get_master_filename(), fs.get_additional_filename())
-    else:
-        disp_name = '%s' % (fs.get_master_filename())
+    disp_name = '%s' % real_name
 
     if ret_value['result']:
         state = 'infected'
@@ -330,14 +326,20 @@ def main():
         print('')
         print_error('CloudBread AntiVirus Engine init')
         return 0
-    else:
-        vlist = kav.listvirus()
-        print("%d" % len(vlist))
 
-    vlist=kav.listvirus()
-    print("%d"%len(vlist))
+    #엔진 버전 출력
+    c=kav.get_version()
+    msg='\rLast Updated %s UTC\n'%c.ctime()
+    cprint(msg,FOREGROUND_GREY)
 
-    if options.opt_vlist is True:   #악성코드 목록 출력
+    #진단/치료 가능한 악성코드 수 출력
+    msg='Signature number: %d\n\n'%kav.get_signum()
+    cprint(msg, FOREGROUND_GREY)
+
+    kav.set_options(options)    #옵션 설정
+
+    # 악성코드 목록 출력
+    if options.opt_vlist is True:
         kav.listvirus(listvirus_callback)
     else:
         if args:
@@ -345,10 +347,15 @@ def main():
             for scan_path in args:
                 scan_path=os.path.abspath(scan_path)
 
-                if os.path.exists(scan_path):
-                    print(scan_path)
+                if os.path.exists(scan_path):   #폴더나 파일이 존재하는가?
+                    kav.scan(scan_path, scan_callback)
                 else:
                     print_error('Invalid path: \'%s\''%scan_path)
+
+            #악성코드 검사 결과 출력
+            ret=kav.get_result()
+            print_result(ret)
+
     kav.uninit()
 
 

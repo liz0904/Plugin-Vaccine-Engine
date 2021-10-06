@@ -1,4 +1,5 @@
 # -*- coding:utf-8 -*-
+import glob
 import mmap
 import os
 import StringIO
@@ -28,6 +29,7 @@ class Engine:
 
         #공개키 로딩
         pu = k2rsa.read_key(os.path.join(plugins_path, 'key.pkr'))
+
         if not pu:
             return False
 
@@ -115,6 +117,9 @@ class EngineInstance:
 
         self.plugins_path = plugins_path  # 플러그인 경로
         self.max_datetime = max_datetime  # 플러그 엔진의 가장 최신 시간 값
+
+        self.options={} #옵션
+        self.set_options()  #기본 옵션 설정
 
         self.kavmain_inst=[]    #모든 플러그인의 KaVMain 인스턴스
 
@@ -231,7 +236,7 @@ class EngineInstance:
         else:
             return False
 
-    def scan(self, filename):
+    def __scan_file(self, filename):
         if self.debug:
             print('[*] KavMain.scan(): ')
 
@@ -246,8 +251,8 @@ class EngineInstance:
             for i,inst in enumerate(self.kavmain_inst):
                 try:
                     ret,vname, mid=inst.scan(mm, filename)
-                    if ret:
-                        eid=i
+                    if ret: #악성코드를 발견하면 추가 악성코드 검사를 중단
+                        eid=i   #악성코드를 발견한 플러그인 엔진 ID
 
                         if self.debug:
                             print('[-] %s.scan(): %s' % (inst.__module__, vname))
@@ -265,6 +270,88 @@ class EngineInstance:
             pass
 
         return False, '', -1, -1
+
+    # 플러그인 엔진에게 악성코드 검사를 요청
+    # 입력값 : filename - 악성코 검사 대상 파일 또는 폴더 이름
+    #          callback - 검사 시 출력 화면 관련 콜백 함수
+    # 리턴값 : 0 - 성공
+    #          1 - Ctrl+C를 이용해서 악성코드 검사 강제 종료
+    def scan(self, filename, *callback):
+        cb_fn=None  #콜백 함수
+
+        # 악성코드 검사 결과
+        ret_value = {
+            'filename': '',  # 파일 이름
+            'result': False,  # 악성코드 발견 여부
+            'virus_name': '',  # 발견된 악성코드 이름
+            'virus_id': -1,  # 악성코드 ID
+            'engine_id': -1  # 악성코드를 발견한 플러그인 엔진 ID
+        }
+
+        #가변 인자 확인
+        argc=len(callback)
+
+        if argc==1: #callback 함수가 존재하는가?
+            cb_fn=callback[0]
+        elif argc>1:    #인자가 너무 많으면 에러
+            return -1
+
+        #검사 대상 리스트에 파일을 등록
+        file_scan_list = [filename]
+
+        while len(file_scan_list):
+            try:
+                real_name = file_scan_list.pop(0)   #검사대상 파일을 하나 가짐
+
+                # 폴더면 내부 파일리스트만 검사 대상 리스트에 등록
+                if os.path.isdir(real_name):
+                    if real_name[-1]==os.sep:
+                        real_name=real_name[:-1]
+
+                    # 콜백 호출 또는 검사 리턴값 생성
+                    ret_value['result'] = False  # 폴더이므로 악성코드 없음
+                    ret_value['filename'] = real_name  # 검사 파일 이름
+
+                    self.result['Folders']+=1   #폴더 개수 카운트
+
+                    if self.options['opt_list']:  # 옵션 내용 중 모든 리스트 출력인가?
+                        if isinstance(cb_fn, types.FunctionType):   #콜백함수 존재?
+                            cb_fn(ret_value)    #콜백함수 호출
+
+                    #폴더 안의 파일들을 검사 대상 리스트에 추가
+                    flist=glob.glob(real_name+os.sep+'*')
+                    file_scan_list=flist+file_scan_list
+                elif os.path.isfile(real_name): #검사 대상이 파일인가?
+                    ret, vname, mid, eid=self.__scan_file(real_name)
+
+                    if ret: #악성코드 진단 개수 카운트
+                        self.result['Infected_files']+=1
+                        self.identified_virus.update([vname])
+
+                    self.result['Files'] += 1   #파일 개수 카운트
+
+                    #콜백 호출 또는 검사 리턴값 생성
+                    ret_value['result'] = ret  # 악성코드 발견 여부
+                    ret_value['engine_id'] = eid  # 엔진 ID
+                    ret_value['virus_name'] = vname  # 에러 메시지로 대체
+                    ret_value['virus_id'] = mid  # 악성코드 ID
+                    ret_value['filename']=real_name #검사 파일 이름
+
+                    if self.options['opt_list']:  # 모든 리스트 출력인가?
+                        if isinstance(cb_fn, types.FunctionType):
+                            cb_fn(ret_value)
+                    else:   #d아니면 악성코드인 것만 출력
+                        if ret_value['result']:
+                            if isinstance(cb_fn, types.FunctionType):
+                                cb_fn(ret_value)
+            except KeyboardInterrupt:
+                return 1    #키보드 종료
+
+        return 0    #정상적으로 검사 종료
+
+
+
+
 
 
     # 플러그인 엔진에게 악성코드 치료를 요청한다.
@@ -290,6 +377,18 @@ class EngineInstance:
 
         return ret
 
+
+    def get_version(self):
+        return self.max_datetime
+
+    def set_options(self, options=None):
+        if options:
+            self.options['opt_list']=options.opt_list
+        else:
+            self.options['opt_list']=False
+        return True
+
+    # 진단 가능한 악성코드 수
     def get_signum(self):
         signum=0 #진단/치료 가능한 악성코드 수
 
@@ -297,19 +396,23 @@ class EngineInstance:
             try:
                 ret=inst.getinfo()
 
-                if signum in ret:
-                    signum+=ret['signum']
+                if 'sig_num' in ret:
+                    signum+=ret['sig_num']
             except AttributeError:
                 continue
 
         return signum
 
-    def get_version(self):
-        return self.max_datetime
+        # 백신 엔진의 악성코드 검사 결과를 초기화
+    def set_result(self):
+        self.result['Folders'] = 0  # 폴더 수
+        self.result['Files'] = 0  # 파일 수
+        self.result['Infected_files'] = 0  # 발견된 전체 악성코드 수 (감염)
+        self.result['Identified_viruses'] = 0  # 발견된 유니크한 악성코드 수
+        self.result['IO_errors'] = 0  # 파일 I/O 에러 발생 수
 
-    def set_options(self, options=None):
-        if options:
-            self.set_options['opt_list']=options.opt_list
-        else:
-            self.set_options['opt_list']=False
-        return True
+    # 백신 엔진의 악성코드 검사 결과
+    def get_result(self):
+        # 지금까지 발견한 유티크한 악성코드의 수를 카운트
+        self.result['Identified_viruses'] = len(self.identified_virus)
+        return self.result
