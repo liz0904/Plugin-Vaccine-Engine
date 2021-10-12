@@ -33,7 +33,7 @@ class KavMain:
         if mm[0:4]=='PK\x03\x04':    #파일 헤더 체크
             fileformat['size']=len(mm)  #포멧 주요 정보 저장(크기)
 
-            ret={'ff_zip':format}
+            ret={'ff_zip':fileformat}
             return ret
 
         return None

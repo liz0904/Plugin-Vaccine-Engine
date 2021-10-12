@@ -13,6 +13,7 @@ k2=kavcore.k2engine.Engine(debug=True)
 
 if k2.set_plugins('plugins'):
     kav=k2.create_instance()
+
     if kav:
         print('[*] Success: create_instance')
 
@@ -24,7 +25,7 @@ if k2.set_plugins('plugins'):
         vlist=kav.listvirus()
         print("[*] Not used Callback: %d"%len(vlist))
 
-        ret, vname, mid, eid=kav.scan('eicar.txt')
+        ret, vname, mid, eid = kav.scan('dummy.txt')
         if ret:
             kav.disinfect('dummy.txt', mid, eid)
 

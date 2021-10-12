@@ -201,9 +201,13 @@ def print_options():
 
 # scan의 콜백 함수
 def scan_callback(ret_value):
-    real_name=ret_value['filename']
+    fs=ret_value['file_struct']
 
-    disp_name = '%s' % real_name
+    if len(fs.get_additional_filename()) !=0:
+        disp_name = '%s' % (fs.get_master_filename(),
+                            fs.get_additional_filename())
+    else:
+        disp_name='%s'%(fs.get_master_filename)
 
     if ret_value['result']:
         state = 'infected'
