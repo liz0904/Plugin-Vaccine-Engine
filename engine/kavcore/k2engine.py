@@ -10,6 +10,7 @@ import types
 import k2kmdfile
 import k2rsa
 import k2file
+import k2const
 
 #Engine 클래스
 class Engine:
@@ -125,6 +126,8 @@ class EngineInstance:
 
         self.kavmain_inst=[]    #모든 플러그인의 KaVMain 인스턴스
 
+        self.update_info=[]
+
         self.result={}
         self.identified_virus=set() #유니크한 악성코드 개수를 구하기 위해 사용
 
@@ -192,8 +195,11 @@ class EngineInstance:
     def set_result(self):
         self.result['Folders'] = 0  # 폴더 수
         self.result['Files'] = 0  # 파일 수
+        self.result['Packed'] = 0  # 압축 파일 수
         self.result['Infected_files'] = 0  # 발견된 전체 악성코드 수 (감염)
         self.result['Identified_viruses'] = 0  # 발견된 유니크한 악성코드 수
+        self.result['Disinfected_files'] = 0  # 치료한 파일 수
+        self.result['Deleted_files'] = 0  # 삭제한 파일 수
         self.result['IO_errors'] = 0  # 파일 I/O 에러 발생 수
 
     # 백신 엔진의 악성코드 검사 결과
@@ -263,6 +269,11 @@ class EngineInstance:
     # 리턴값 : 0 - 성공
     #          1 - Ctrl+C를 이용해서 악성코드 검사 강제 종료
     def scan(self, filename, *callback):
+        self.update_info=[]
+        scan_callback_fn=None   #악성코드 검사 콜백 함수
+        disinfect_callback_fn=None  #악성코드 치료 콜백 함수
+        update_callback_fn=None #악성코드 압축 최종 치료 콜백 함수
+
         # 악성코드 검사 결과
         ret_value = {
             'filename': '',  # 파일 이름
@@ -271,6 +282,13 @@ class EngineInstance:
             'virus_id': -1,  # 악성코드 ID
             'engine_id': -1  # 악성코드를 발견한 플러그인 엔진 ID
         }
+
+        try:  # 콜백 함수 저장
+            scan_callback_fn = callback[0]
+            disinfect_callback_fn = callback[1]
+            update_callback_fn = callback[2]
+        except IndexError:
+            pass
 
         #가변 인자 확인
         argc=len(callback)
@@ -303,7 +321,7 @@ class EngineInstance:
 
                     if self.options['opt_list']:  # 옵션 내용 중 모든 리스트 출력인가?
                         if isinstance(cb_fn, types.FunctionType):   #콜백함수 존재?
-                            cb_fn(ret_value)    #콜백함수 호출
+                            scan_callback_fn(ret_value)    #콜백함수 호출
 
                     #폴더 안의 파일들을 검사 대상 리스트에 추가
                     flist=glob.glob(real_name+os.sep+'*')
@@ -315,7 +333,7 @@ class EngineInstance:
 
                     file_scan_list=tmp_flist + file_scan_list
 
-                # 검사 대상이 파일인가?
+                # 검사 대상이 파일인가? 또는 압축해제 대상인가?
                 elif os.path.isfile(real_name) or t_file_info.is_archive():
                     self.result['Files'] += 1   #파일 개수 카운트
 
@@ -342,22 +360,33 @@ class EngineInstance:
                     ret_value['virus_id'] = mid  # 악성코드 ID
                     ret_value['file_struct']=t_file_info #검사 파일 이름
 
+                    if ret_value['result']: #악성코드가 발견 됐다?!
+                        if isinstance(scan_callback_fn, types.FunctionType):
+                            action_type=scan_callback_fn(ret_value)
 
-                    if self.options['opt_list']:  # 모든 리스트 출력인가?
-                        if isinstance(cb_fn, types.FunctionType):
-                            cb_fn(ret_value)
-                    else:   #d아니면 악성코드인 것만 출력
-                        if ret_value['result']:
-                            if isinstance(cb_fn, types.FunctionType):
-                                cb_fn(ret_value)
+                        if action_type == k2const.K2_ACTION_QUIT:  #종료할거임?
+                            return 0
+                        self.__disinfect_process(ret_value, disinfect_callback_fn, action_type)
+                    else:
+                        if self.options['opt_list']:  # 모든 리스트 출력인가?
+                            if isinstance(scan_callback_fn, types.FunctionType):
+                                scan_callback_fn(ret_value)
+                        else:   #아니면 악성코드인 것만 출력
+                            if ret_value['result']:
+                                if isinstance(cb_fn, types.FunctionType):
+                                    scan_callback_fn(ret_value)
+
+                      #압축 파일 최종 치료 정리
+                    self.__update_process(t_file_info, update_callback_fn)
 
                     if not ret:
                         arc_file_list=self.arclist(t_file_info, ff)
                         if len(arc_file_list):
                             file_scan_list=arc_file_list+file_scan_list
-
             except KeyboardInterrupt:
                 return 1    #키보드 종료
+
+        self.__update_process(None, update_callback_fn, True)   #최종 파일 정리
 
         return 0    #정상적으로 검사 종료
 
@@ -549,6 +578,120 @@ class EngineInstance:
 
         return ret
 
+    #악성코드를 치료
+    def __disinfect_process(self, ret_value, disinfect_callback_fn, action_type):
+        if action_type==k2const.K2_ACTION_IGNORE:   #치료 무시
+            return
 
+        t_file_info=ret_value['file_struct']    #검사 파일 정보
+        mid=ret_value['virus_id']   #악성코드 ID
+        eid=ret_value['engine_id']  #악성코드를 진단한 엔진 ID
 
+        d_fname=t_file_info.get_filename()
+        d_ret=False
 
+        if action_type==k2const.K2_ACTION_DISINFECT:    #치료 옵션이 설정됐나?
+            d_ret=self.disinfect(d_fname, mid, eid)
+            if d_ret:
+                self.result['Disinfected_files'] +=1    #치료 파일 수
+        elif action_type==k2const.K2_ACTION_DELETE:     #삭제 옵션이 설정 됐나?
+            try:
+                os.remove(d_fname)
+                d_ret=True
+                self.result['Deleted_files'] +=1        #삭제 파일 수
+            except IOError:
+                d_ret=False
+
+        t_file_info.set_modify(d_ret)   #치료(수정/삭제) 여부 표시
+
+        if isinstance(disinfect_callback_fn, types.FunctionType):
+            disinfect_callback_fn(ret_value, action_type)
+
+    # update_info를 갱신
+    # 입력값 : file_struct        - 파일 정보 구조체
+    #          immediately_flag   - update_info 모든 정보 갱신 여부
+    def __update_process(self, file_struct, update_callback_fn, immediately_flag=False):
+        # 압축 파일 정보의 재압축을 즉시하지 않고 내부 구성을 확인하여 처리한다.
+        if immediately_flag is False:
+            if len(self.update_info) == 0:  # 아무런 파일이 없으면 추가
+                self.update_info.append(file_struct)
+            else:
+                n_file_info = file_struct  # 현재 작업 파일 정보
+                p_file_info = self.update_info[-1]  # 직전 파일 정보
+
+                # 마스터 파일이 같은가? (압축 엔진이 있을때만 유효)
+                if p_file_info.get_master_filename() == n_file_info.get_master_filename():
+                    if p_file_info.get_level() <= n_file_info.get_level():
+                        # 마스터 파일이 같고 계속 압축 깊이가 깊어지면 계속 누적
+                        self.update_info.append(n_file_info)
+                    else:
+                        ret_file_info = self.__update_arc_file_struct(p_file_info)
+                        self.update_info.append(p_file_info)  # 결과 파일 추가
+                        self.update_info.append(p_file_info)  # 다음 파일 추가
+                else:
+                    #새로운 파일이 시작되므로 self.update_info 내부 모두 정리
+                    immediately_flag = True
+
+        # 압축 파일 정보를 이용해 즉시 압축하여 최종 마스터 파일로 재조립한다.
+        if immediately_flag and len(self.update_info) >1:
+            ret_file_info=None
+
+            while len(self.update_info):
+                p_file_info = self.update_info[-1]  # 직전 파일 정보
+                ret_file_info = self.__update_arc_file_struct(p_file_info)
+
+                if len(self.update_info):  # 최상위 파일이 아니면 하위 결과 추가
+                    self.update_info.append(ret_file_info)
+
+            if isinstance(update_callback_fn, types.FunctionType) and ret_file_info:
+                update_callback_fn(ret_file_info)
+
+    # update_info 내부의 압축을 처리
+    # 입력값 : p_file_info - update_info의 마지막 파일 정보 구조체
+    # 리턴값 : 갱신된 파일 정보 구조체
+    def __update_arc_file_struct(self, p_file_info):
+        # 실제 압축 파일 이름이 같은 파일을 모두 추출한다.
+        t = []
+
+        arc_level = p_file_info.get_level()
+
+        while len(self.update_info):
+            if self.update_info[-1].get_level() == arc_level:
+                t.append(self.update_info.pop())
+            else:
+                break
+
+        t.reverse()  # 순위를 바꾼다.
+
+        # 리턴값이 될 파일 정보 (압축 파일의 최상위 파일)
+        ret_file_info = self.update_info.pop()
+
+        # 업데이트 대상 파일들이 수정 여부를 체크한다
+        b_update = False
+
+        for finfo in t:
+            if finfo.is_modify():
+                b_update = True
+                break
+
+        if b_update:  # 수정된 파일이 존재한다면 재압축 진행
+            arc_name = t[0].get_archive_filename()
+            arc_engine_id = t[0].get_archive_engine_name()
+
+            for inst in self.kavmain_inst:
+                try:
+                    ret=inst.mkarc(arc_engine_id, arc_name, t)
+                    if ret: #최종 압축 성공
+                        break
+                except AttributeError:
+                    continue
+            ret_file_info.set_modify(True)  #수정 여부 표시
+
+        #압축된 파일들 모두 삭제
+        for tmp in t:
+            t_fname=tmp.get_filename()
+            #플러그인 엔진에 의해 파일이 치료(삭제)됐을 수 있다
+            if os.path.exists(t_fname):
+                os.remove(t_fname)
+
+        return ret_file_info

@@ -60,3 +60,25 @@ class KavMain:
 
             return data
         return None
+
+    #리턴값: 압축 성공 여부
+    def mkarc(self, arc_engine_id, arc_name, file_infos):
+        if arc_engine_id=='arc_zip':
+            zfile=zipfile.ZipFile(arc_name, 'w')
+
+            for file_info in file_infos:
+                rname=file_info.get_filename()  #검사 대상 파일
+
+                try:
+                    with open(rname, 'rb') as fp:
+                        buf=fp.read()
+
+                        a_name=file_info.get_filename_in_archive()
+                        zfile.writestr(a_name, buf)
+                except IOError:
+                    pass
+            zfile.close()
+            return True
+        return False
+
+

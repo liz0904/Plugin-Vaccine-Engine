@@ -3,6 +3,7 @@
 # 실제 임포트 모듈
 import os
 import sys
+from msvcrt import getch
 from optparse import OptionParser
 import kavcore.k2engine
 from ctypes import windll, Structure, c_short, c_ushort,  byref
@@ -11,6 +12,9 @@ from ctypes import windll, Structure, c_short, c_ushort,  byref
 KAV_VERSION = '0.01'
 KAV_BUILDDATE = 'Sep 20 2021'
 KAV_LASTYEAR = KAV_BUILDDATE[len(KAV_BUILDDATE)-4:]
+
+g_options = None  # 옵션
+
 
 # 콘솔에 색깔 출력을 위한 클래스 및 함수들
 FOREGROUND_BLACK = 0x0000
@@ -158,6 +162,15 @@ def define_options():
     parser.add_option("-V", "--vlist",
                       action="store_true", dest="opt_vlist",
                       default=False)
+    parser.add_option("-p", "--prompt",
+                      action="store_true", dest="opt_prompt",
+                      default=False)
+    parser.add_option("-d", "--dis",
+                      action="store_true", dest="opt_dis",
+                      default=False)
+    parser.add_option("-l", "--del",
+                      action="store_true", dest="opt_del",
+                      default=False)
     parser.add_option("-?", "--help",
                       action="store_true", dest="opt_help",
                       default=False)
@@ -194,6 +207,9 @@ def print_options():
         -r,  --arc             scan archives
         -I,  --list            display all files
         -V,  --vlist           display virus list
+        -p,  --prompt          prompt for action
+        -d,  --dis             disinfect files
+        -l,  --del             delete infected files
         -?,  --help            this help
                                * = default option'''
 
@@ -201,13 +217,15 @@ def print_options():
 
 # scan의 콜백 함수
 def scan_callback(ret_value):
+    global g_options
+
     fs=ret_value['file_struct']
 
     if len(fs.get_additional_filename()) !=0:
-        disp_name = '%s' % (fs.get_master_filename(),
+        disp_name = '%s (%s)' % (fs.get_master_filename(),
                             fs.get_additional_filename())
     else:
-        disp_name='%s'%(fs.get_master_filename)
+        disp_name='%s'%(fs.get_master_filename())
 
     if ret_value['result']:
         state = 'infected'
@@ -221,9 +239,31 @@ def scan_callback(ret_value):
 
     display_line(disp_name, message, message_color)
 
+    if g_options.opt_prompt:     #프롬프트 옵션이 설정되었는가?
+        while True and ret_value['result']:
+            cprint('Disinfect/Delete/Ignore/Quie? (d/l/i/q):', FOREGROUND_CYAN |FOREGROUND_INTENSITY)
+            ch=getch().lower()
+            print ch
+
+            if ch == 'd':
+                return kavcore.k2const.K2_ACTION_DISINFECT  #악성코드 치료
+            elif ch == 'l':
+                return kavcore.k2const.K2_ACTION_DELETE     #악성코드 삭제
+            elif ch == 'i':
+                return kavcore.k2const.K2_ACTION_IGNORE     #악성코드 치료 무시
+            elif ch == 'q':
+                return kavcore.k2const.K2_ACTION_QUIT
+    elif g_options.opt_dis:  # 치료 옵션
+        return kavcore.k2const.K2_ACTION_DISINFECT
+    elif g_options.opt_del:  # 삭제 옵션
+        return kavcore.k2const.K2_ACTION_DELETE
+
+    return kavcore.k2const.K2_ACTION_IGNORE #default 값: 악성코드 치료 무시
 
 
-# disinfect의 콜백 함수
+
+
+# disifect의 콜백 함수
 def disinfect_callback(ret_value, action_type):
     fs = ret_value['file_struct']
     message = ''
@@ -240,7 +280,7 @@ def disinfect_callback(ret_value, action_type):
             message = 'deleted'
 
         message_color = FOREGROUND_GREEN | FOREGROUND_INTENSITY
-    else:
+    else:   #수정 실패
         if action_type == kavcore.k2const.K2_ACTION_DISINFECT:
             message = 'disinfection failed'
         elif action_type == kavcore.k2const.K2_ACTION_DELETE:
@@ -254,14 +294,11 @@ def disinfect_callback(ret_value, action_type):
 # update의 콜백 함수
 # -------------------------------------------------------------------------
 def update_callback(ret_file_info):
-
     if ret_file_info.is_modify():  # 수정되었다면 결과 출력
         disp_name = ret_file_info.get_filename()
 
-
         message = 'updated'
         message_color = FOREGROUND_GREEN | FOREGROUND_INTENSITY
-
 
         display_line(disp_name, message, message_color)
 
@@ -291,8 +328,11 @@ def listvirus_callback(plugin_name, vnames):
 
 # main()
 def main():
+    global g_options
 
     options, args = parser_options()    #옵션 분석
+    g_options=options   #global options 지정
+
     print_k2logo()  #로고 출력
 
     # 잘못된 옵션인가?
