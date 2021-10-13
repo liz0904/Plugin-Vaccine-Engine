@@ -552,6 +552,7 @@ class EngineInstance:
                     break
             except AttributeError:
                 continue
+
         return file_scan_list
 
     #플러그인 엔진에게 파일 포맷 분석을 요청
@@ -607,44 +608,6 @@ class EngineInstance:
         if isinstance(disinfect_callback_fn, types.FunctionType):
             disinfect_callback_fn(ret_value, action_type)
 
-    # update_info를 갱신
-    # 입력값 : file_struct        - 파일 정보 구조체
-    #          immediately_flag   - update_info 모든 정보 갱신 여부
-    def __update_process(self, file_struct, update_callback_fn, immediately_flag=False):
-        # 압축 파일 정보의 재압축을 즉시하지 않고 내부 구성을 확인하여 처리한다.
-        if immediately_flag is False:
-            if len(self.update_info) == 0:  # 아무런 파일이 없으면 추가
-                self.update_info.append(file_struct)
-            else:
-                n_file_info = file_struct  # 현재 작업 파일 정보
-                p_file_info = self.update_info[-1]  # 직전 파일 정보
-
-                # 마스터 파일이 같은가? (압축 엔진이 있을때만 유효)
-                if p_file_info.get_master_filename() == n_file_info.get_master_filename():
-                    if p_file_info.get_level() <= n_file_info.get_level():
-                        # 마스터 파일이 같고 계속 압축 깊이가 깊어지면 계속 누적
-                        self.update_info.append(n_file_info)
-                    else:
-                        ret_file_info = self.__update_arc_file_struct(p_file_info)
-                        self.update_info.append(p_file_info)  # 결과 파일 추가
-                        self.update_info.append(p_file_info)  # 다음 파일 추가
-                else:
-                    #새로운 파일이 시작되므로 self.update_info 내부 모두 정리
-                    immediately_flag = True
-
-        # 압축 파일 정보를 이용해 즉시 압축하여 최종 마스터 파일로 재조립한다.
-        if immediately_flag and len(self.update_info) >1:
-            ret_file_info=None
-
-            while len(self.update_info):
-                p_file_info = self.update_info[-1]  # 직전 파일 정보
-                ret_file_info = self.__update_arc_file_struct(p_file_info)
-
-                if len(self.update_info):  # 최상위 파일이 아니면 하위 결과 추가
-                    self.update_info.append(ret_file_info)
-
-            if isinstance(update_callback_fn, types.FunctionType) and ret_file_info:
-                update_callback_fn(ret_file_info)
 
     # update_info 내부의 압축을 처리
     # 입력값 : p_file_info - update_info의 마지막 파일 정보 구조체
@@ -695,3 +658,43 @@ class EngineInstance:
                 os.remove(t_fname)
 
         return ret_file_info
+
+
+    # update_info를 갱신
+    # 입력값 : file_struct        - 파일 정보 구조체
+    #          immediately_flag   - update_info 모든 정보 갱신 여부
+    def __update_process(self, file_struct, update_callback_fn, immediately_flag=False):
+        # 압축 파일 정보의 재압축을 즉시하지 않고 내부 구성을 확인하여 처리한다.
+        if immediately_flag is False:
+            if len(self.update_info) == 0:  # 아무런 파일이 없으면 추가
+                self.update_info.append(file_struct)
+            else:
+                n_file_info = file_struct  # 현재 작업 파일 정보
+                p_file_info = self.update_info[-1]  # 직전 파일 정보
+
+                # 마스터 파일이 같은가? (압축 엔진이 있을때만 유효)
+                if p_file_info.get_master_filename() == n_file_info.get_master_filename():
+                    if p_file_info.get_level() <= n_file_info.get_level():
+                        # 마스터 파일이 같고 계속 압축 깊이가 깊어지면 계속 누적
+                        self.update_info.append(n_file_info)
+                    else:
+                        ret_file_info = self.__update_arc_file_struct(p_file_info)
+                        self.update_info.append(ret_file_info)  # 결과 파일 추가
+                        self.update_info.append(n_file_info)  # 다음 파일 추가
+                else:
+                    #새로운 파일이 시작되므로 self.update_info 내부 모두 정리
+                    immediately_flag = True
+
+        # 압축 파일 정보를 이용해 즉시 압축하여 최종 마스터 파일로 재조립한다.
+        if immediately_flag and len(self.update_info) >1:
+            ret_file_info=None
+
+            while len(self.update_info):
+                p_file_info = self.update_info[-1]  # 직전 파일 정보
+                ret_file_info = self.__update_arc_file_struct(p_file_info)
+
+                if len(self.update_info):  # 최상위 파일이 아니면 하위 결과 추가
+                    self.update_info.append(ret_file_info)
+
+            if isinstance(update_callback_fn, types.FunctionType) and ret_file_info:
+                update_callback_fn(ret_file_info)
