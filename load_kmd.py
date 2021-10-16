@@ -1,10 +1,10 @@
 import imp
 import marshal
 import sys
-from engine.kavcore import k2rsa, k2kmdfile
+from engine.clb import rsa, clbfile
 
-pu= k2rsa.read_key('engine/plugins/key.pkr')
-k= k2kmdfile.KMD('dummy.kmd', pu)
+pu= rsa.read_key('engine/plugins/key.pkr')
+k= clbfile.CLB('dummy.kmd', pu)
 
 code=marshal.loads(k.body[8:])
 module=imp.new_module('dummy')

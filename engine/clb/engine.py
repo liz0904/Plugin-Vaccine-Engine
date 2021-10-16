@@ -7,10 +7,10 @@ import datetime
 import tempfile
 import types
 
-import k2kmdfile
-import k2rsa
-import k2file
-import k2const
+import clbfile
+import rsa
+import file
+import menu
 
 #Engine 클래스
 class Engine:
@@ -31,13 +31,13 @@ class Engine:
         self.plugins_path=plugins_path  #플러그인 경로 저장
 
         #공개키 로딩
-        pu = k2rsa.read_key(os.path.join(plugins_path, 'key.pkr'))
+        pu = rsa.read_key(os.path.join(plugins_path, 'key.pkr'))
 
         if not pu:
             return False
 
         #우선순위 알아내기
-        ret = self.__get_kmd_list(os.path.join(plugins_path, 'cloudbread.kmd'), pu)
+        ret = self.__get_kmd_list(os.path.join(plugins_path, 'cloudbread.clb'), pu)
         if not ret: #로딩할 kmd 파일이 없을 시
             return False
 
@@ -48,8 +48,8 @@ class Engine:
         # 우선순위대로 KMD 파일을 로딩한다.
         for kmd_name in self.kmdfiles:
             kmd_path = os.path.join(plugins_path, kmd_name)
-            k=k2kmdfile.KMD(kmd_path, pu)   #모든 kmd 파일을 복호화
-            module=k2kmdfile.load(kmd_name.split('.')[0], k.body)
+            k=clbfile.CLB(kmd_path, pu)   #모든 kmd 파일을 복호화
+            module=clbfile.load(kmd_name.split('.')[0], k.body)
 
             if module:  # 메모리 로딩 성공
                 self.kmd_modules.append(module)
@@ -85,7 +85,7 @@ class Engine:
     def __get_kmd_list(self, cloudbread_kmd_file, pu):
         kmdfiles=[] #우선순위 목록
 
-        k=k2kmdfile.KMD(cloudbread_kmd_file, pu)    #cloudbread.kmd 파일 복호화
+        k=clbfile.CLB(cloudbread_kmd_file, pu)    #cloudbread.clb 파일 복호화
 
         if k.body:  #cloudbread.kmd가 읽혔는지?
             msg=StringIO.StringIO(k.body)
@@ -95,7 +95,7 @@ class Engine:
 
                 if not line:    #읽을 내용이 없으면 종료
                     break
-                elif line.find('.kmd') != -1:   # kmd가 포함되어 있으면 우선순위 목록에 추가
+                elif line.find('.clb') != -1:   # kmd가 포함되어 있으면 우선순위 목록에 추가
                     kmdfiles.append(line)
                 else:
                     continue
@@ -299,13 +299,13 @@ class EngineInstance:
             return -1
 
         #1. 검사 대상 리스트에 파일을 등록
-        file_info=k2file.FileStruct(filename)
+        file_info=file.Files(filename)
         file_scan_list=[file_info]
 
         while len(file_scan_list):
             try:
                 t_file_info=file_scan_list.pop(0) #검사대상 파일을 하나 가짐
-                real_name = t_file_info.get_filename()
+                real_name = t_file_info.get_detect_filename()
 
                 # 폴더면 내부 파일리스트만 검사 대상 리스트에 등록
                 if os.path.isdir(real_name):
@@ -328,13 +328,13 @@ class EngineInstance:
                     tmp_flist=[]
 
                     for rfname in flist:
-                        tmp_info=k2file.FileStruct(rfname)
+                        tmp_info=file.Files(rfname)
                         tmp_flist.append(tmp_info)
 
                     file_scan_list=tmp_flist + file_scan_list
 
                 # 검사 대상이 파일인가? 또는 압축해제 대상인가?
-                elif os.path.isfile(real_name) or t_file_info.is_archive():
+                elif os.path.isfile(real_name) or t_file_info.bool_zip():
                     self.result['Files'] += 1   #파일 개수 카운트
 
                     #압축된 파일이면 해제하기
@@ -364,7 +364,7 @@ class EngineInstance:
                         if isinstance(scan_callback_fn, types.FunctionType):
                             action_type=scan_callback_fn(ret_value)
 
-                        if action_type == k2const.K2_ACTION_QUIT:  #종료할거임?
+                        if action_type == menu.CLB_QUIT:  #종료할거임?
                             return 0
                         self.__disinfect_process(ret_value, disinfect_callback_fn, action_type)
                     else:
@@ -403,8 +403,8 @@ class EngineInstance:
             mid = -1
             eid = -1
 
-            filename=file_struct.get_filename() #검사 대상 파일 이름 추출
-            filename_ex=file_struct.get_additional_filename()   #압축 내부 파일명
+            filename=file_struct.get_detect_filename() #검사 대상 파일 이름 추출
+            filename_ex=file_struct.get_another_filename()   #압축 내부 파일명
 
             fp=open(filename, 'rb')
             mm=mmap.mmap(fp.fileno(), 0, access=mmap.ACCESS_READ)
@@ -490,11 +490,11 @@ class EngineInstance:
         rname_struct=None
 
         try:
-            if file_struct.is_archive():
-                arc_engine_id=file_struct.get_archive_engine_name()
+            if file_struct.bool_zip():
+                arc_engine_id=file_struct.get_zip_engine_id()
 
-                arc_name=file_struct.get_archive_filename()
-                name_in_arc=file_struct.get_filename_in_archive()
+                arc_name=file_struct.get_zip_filename()
+                name_in_arc=file_struct.get_unzip_filename()
 
                 for inst in self.kavmain_inst:
                     try:
@@ -507,7 +507,7 @@ class EngineInstance:
                             fp.close()
 
                             rname_struct=file_struct
-                            rname_struct.set_filename(rname)
+                            rname_struct.set_detect_filename(rname)
 
                     except AttributeError:
                         continue
@@ -521,10 +521,10 @@ class EngineInstance:
         arc_list=[]
         file_scan_list=[]
 
-        rname=file_struct.get_filename()
-        deep_name=file_struct.get_additional_filename()
-        mname=file_struct.get_master_filename()
-        level=file_struct.get_level()
+        rname=file_struct.get_detect_filename()
+        deep_name=file_struct.get_another_filename()
+        mname=file_struct.get_root_filename()
+        level=file_struct.get_dir()
 
         #압축 엔진 모듈의 arclist 멤버 함수 호출
         for inst in self.kavmain_inst:
@@ -543,9 +543,9 @@ class EngineInstance:
                         else:
                             dname='%s' %name
 
-                        fs=k2file.FileStruct()
+                        fs=file.Files()
                         #기존 level보다 1증가시켜 압축 깊이가 깊어짐을 표시
-                        fs.set_archive(arc_id, rname, name, dname, mname, False, False, level+1)
+                        fs.set_zip(arc_id, rname, name, dname, mname, False, False, level + 1)
                         file_scan_list.append(fs)
 
                     self.result['Packed']+=1
@@ -558,7 +558,7 @@ class EngineInstance:
     #플러그인 엔진에게 파일 포맷 분석을 요청
     def format(self, file_struct):
         ret={}
-        filename=file_struct.get_filename()
+        filename=file_struct.get_detect_filename()
 
         try:
             fp=open(filename, 'rb')
@@ -581,21 +581,21 @@ class EngineInstance:
 
     #악성코드를 치료
     def __disinfect_process(self, ret_value, disinfect_callback_fn, action_type):
-        if action_type==k2const.K2_ACTION_IGNORE:   #치료 무시
+        if action_type==menu.CLB_IGNORE:   #치료 무시
             return
 
         t_file_info=ret_value['file_struct']    #검사 파일 정보
         mid=ret_value['virus_id']   #악성코드 ID
         eid=ret_value['engine_id']  #악성코드를 진단한 엔진 ID
 
-        d_fname=t_file_info.get_filename()
+        d_fname=t_file_info.get_detect_filename()
         d_ret=False
 
-        if action_type==k2const.K2_ACTION_DISINFECT:    #치료 옵션이 설정됐나?
+        if action_type==menu.CLB_DISINFECT:    #치료 옵션이 설정됐나?
             d_ret=self.disinfect(d_fname, mid, eid)
             if d_ret:
                 self.result['Disinfected_files'] +=1    #치료 파일 수
-        elif action_type==k2const.K2_ACTION_DELETE:     #삭제 옵션이 설정 됐나?
+        elif action_type==menu.CLB_DELETE:     #삭제 옵션이 설정 됐나?
             try:
                 os.remove(d_fname)
                 d_ret=True
@@ -616,10 +616,10 @@ class EngineInstance:
         # 실제 압축 파일 이름이 같은 파일을 모두 추출한다.
         t = []
 
-        arc_level = p_file_info.get_level()
+        arc_level = p_file_info.get_dir()
 
         while len(self.update_info):
-            if self.update_info[-1].get_level() == arc_level:
+            if self.update_info[-1].get_dir() == arc_level:
                 t.append(self.update_info.pop())
             else:
                 break
@@ -638,8 +638,8 @@ class EngineInstance:
                 break
 
         if b_update:  # 수정된 파일이 존재한다면 재압축 진행
-            arc_name = t[0].get_archive_filename()
-            arc_engine_id = t[0].get_archive_engine_name()
+            arc_name = t[0].get_zip_filename()
+            arc_engine_id = t[0].get_zip_engine_id()
 
             for inst in self.kavmain_inst:
                 try:
@@ -652,7 +652,7 @@ class EngineInstance:
 
         #압축된 파일들 모두 삭제
         for tmp in t:
-            t_fname=tmp.get_filename()
+            t_fname=tmp.get_detect_filename()
             #플러그인 엔진에 의해 파일이 치료(삭제)됐을 수 있다
             if os.path.exists(t_fname):
                 os.remove(t_fname)
@@ -673,8 +673,8 @@ class EngineInstance:
                 p_file_info = self.update_info[-1]  # 직전 파일 정보
 
                 # 마스터 파일이 같은가? (압축 엔진이 있을때만 유효)
-                if p_file_info.get_master_filename() == n_file_info.get_master_filename():
-                    if p_file_info.get_level() <= n_file_info.get_level():
+                if p_file_info.get_root_filename() == n_file_info.get_root_filename():
+                    if p_file_info.get_dir() <= n_file_info.get_dir():
                         # 마스터 파일이 같고 계속 압축 깊이가 깊어지면 계속 누적
                         self.update_info.append(n_file_info)
                     else:

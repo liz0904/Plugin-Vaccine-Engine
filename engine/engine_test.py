@@ -3,13 +3,13 @@
 import os
 import sys
 
-import kavcore.k2engine
+import clb.engine
 
 def listvirus_callback(plugin_name, vnames):
     for vname in vnames:
         print("%-50s [%s.kmd]"%(vname, plugin_name))
 
-k2=kavcore.k2engine.Engine(debug=True)
+k2=clb.engine.Engine(debug=True)
 
 if k2.set_plugins('plugins'):
     kav=k2.create_instance()
