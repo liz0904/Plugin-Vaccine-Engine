@@ -14,9 +14,9 @@ import timelib
 import marshal
 import imp
 
-# rsa 개인키를 이용해서 주어진 파일을 암호화하여 KMD 파일을 생성
+# rsa 개인키를 이용해서 주어진 파일을 암호화하여 clb 파일을 생성
 # 입력값 : src_fname - 암호화 대상 파일
-# 리턴값 : kmd 파일 생성 성공 여부
+# 리턴값 : clb 파일 생성 성공 여부
 def make_clb(hash_fname, debug=False):
 
     # 암호화 대상 파일을 컴파일 또는 복사해서 준비한다.
@@ -42,9 +42,9 @@ def make_clb(hash_fname, debug=False):
         return False
 
     # CLOUDBREAD 파일을 생성
-    # 헤더 : 시그너처(CLOUDBREAD)+예약영역 : [[CLOUDBREAD][[날짜][시간]...]
-    # 시그너처(CLOUDBREAD)을 추가한다.
-    clb_signature = 'CLOUDBREAD'
+    # 헤더 : 시그너처(CLBR)+예약영역 : [[CLOUDBREAD][[날짜][시간]...]
+    # 시그너처(CLBR)을 추가
+    clb_signature = 'CLBR'
 
     # 현재 날짜와 시간
     now_date = timelib.get_now_date()
@@ -170,7 +170,7 @@ class CLBError(Exception):
 
 # clb 관련 상수
 class CLBConstraints:
-    CLB_SIGNATURE = 'CLOUDBREAD'  # 시그니처
+    CLB_SIGNATURE = 'CLBR'  # 시그니처
     CLB_DATE_POSITION = 4  # 날짜 위치
     CLB_DATE_SIZE = 2  # 날짜 크기
     CLB_TIME_POSITION = 6  # 시간 위치
@@ -188,8 +188,8 @@ class CLB(CLBConstraints):
     #         key_public    - 복호화를 위한 공개키
     def __init__(self, filename, key_public):
         self.filename = filename  # CLB 파일 이름
-        self.date = None  # KMD 파일의 날짜
-        self.time = None  # KMD 파일의 시간
+        self.date = None  # clb 파일의 날짜
+        self.time = None  # clb 파일의 시간
         self.body = None  # 복호화 된 파일 내용
 
         self.data_clb_encrypt = None  # CLB 암호화 된 파일 내용
@@ -200,7 +200,7 @@ class CLB(CLBConstraints):
             self.decrypt(self.filename)  # 파일을 복호화한다.
 
     # CLB 파일을 복호화
-    # 인자값 : fname - KMD 파일 이름
+    # 인자값 : fname - clb 파일 이름
     def decrypt(self, filename, debug=False):
         # CLB 파일을 열고 시그너처를 체크한다.
         with open(filename, 'rb') as fp:

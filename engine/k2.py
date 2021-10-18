@@ -353,7 +353,7 @@ def main():
 
     #백신 엔진 구동
     k2=clb.engine.Engine()    #엔진 클래스
-    if not k2.set_plugins('plugins'):   #플러그인 엔진 설정
+    if not k2.loading('plugins'):   #플러그인 엔진 설정
         print('')
         print_error('CloudBread AntiVirus Engine set_plugins')
         return 0

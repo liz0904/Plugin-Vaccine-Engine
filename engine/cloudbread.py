@@ -6,7 +6,7 @@ import sys
 from msvcrt import getch
 from optparse import OptionParser
 import clb.engine
-from ctypes import windll, Structure, c_short, c_ushort,  byref
+from ctypes import windll, Structure, c_short, c_ushort, byref
 
 # 주요 상수
 KAV_VERSION = '0.01'
@@ -27,7 +27,6 @@ FOREGROUND_YELLOW = 0x0006
 FOREGROUND_GREY = 0x0007
 FOREGROUND_INTENSITY = 0x0008  # foreground color is intensified.
 
-from ctypes import windll, Structure, c_short, c_ushort, byref
 
 SHORT = c_short
 WORD = c_ushort
@@ -113,10 +112,7 @@ def display_line(filename, message, message_color):
     cprint(fname + ' ', FOREGROUND_GREY)
     cprint(message + '\n', message_color)
 
-# -------------------------------------------------------------------------
-# print_k2logo()
-# 백신 로고를 출력한다
-# -------------------------------------------------------------------------
+# 백신 로고를 출력
 def print_k2logo():
     logo = '''CloudBread Anti-Virus I (for %s) Ver %s (%s)
 Copyright (C) 2021-%s CloudBread. All rights reserved.
@@ -290,9 +286,7 @@ def disinfect_callback(ret_value, action_type):
 
     display_line(disp_name, message, message_color)
 
-# -------------------------------------------------------------------------
 # update의 콜백 함수
-# -------------------------------------------------------------------------
 def update_callback(ret_file_info):
     if ret_file_info.is_modify():  # 수정되었다면 결과 출력
         disp_name = ret_file_info.get_detect_filename()
@@ -304,8 +298,7 @@ def update_callback(ret_file_info):
 
 
 
-# print_result(result)
-# 악성코드 검사 결과를 출력한다.
+# 악성코드 검사 결과 출력
 # 입력값 : result - 악성코드 검사 결과
 def print_result(result):
 
@@ -353,12 +346,12 @@ def main():
 
     #백신 엔진 구동
     k2=clb.engine.Engine()    #엔진 클래스
-    if not k2.set_plugins('plugins'):   #플러그인 엔진 설정
+    if not k2.loading('plugins'):   #플러그인 엔진 설정
         print('')
-        print_error('CloudBread AntiVirus Engine set_plugins')
+        print_error('CloudBread AntiVirus Engine loading')
         return 0
 
-    kav=k2.create_instance()    #백신 엔진 인스턴스 생성
+    kav=k2.make_instance()    #백신 엔진 인스턴스 생성
 
     if not kav:
         print('')
@@ -371,7 +364,7 @@ def main():
         return 0
 
     #엔진 버전 출력
-    c=kav.get_version()
+    c=kav.check_Version()
     msg='\rLast Updated %s UTC\n'%c.ctime()
     cprint(msg,FOREGROUND_GREY)
 
@@ -386,7 +379,7 @@ def main():
         kav.listvirus(listvirus_callback)
     else:
         if args:
-            kav.set_result()    #악성코드 검사 결과를 초기화
+            kav.show_result()    #악성코드 검사 결과를 초기화
 
             #검사용 path
             for scan_path in args:
