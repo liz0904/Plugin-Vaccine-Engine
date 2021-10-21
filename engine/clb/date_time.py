@@ -5,7 +5,7 @@ import time
 # 주어진 정수에서 날짜를 얻는다.
 # 입력값 : 년,월,일이 포함된 2Byte 정수
 # 리턴값 : 년, 월, 일
-def convert_date(t):
+def get_date(t):
     y = ((t & 0xFE00) >> 9) + 1980
     m = (t & 0x01E0) >> 5
     d = (t & 0x001F)
@@ -16,7 +16,7 @@ def convert_date(t):
 # 주어진 정수에서 시간를 얻는다.
 # 입력값 : 시,분,초가 포함된 2Byte 정수
 # 리턴값 : 시, 분, 초
-def convert_time(t):
+def get_time(t):
     h = (t & 0xF800) >> 11
     m = (t & 0x07E0) >> 5
     s = (t & 0x001F) * 2
@@ -27,7 +27,7 @@ def convert_time(t):
 # 현재 날짜를 2byte 날짜 값으로 변환한다.
 # 입력값 : now - 현재 날짜/시간값 (생략 가능)
 # 리턴값 : 2byte 날짜 값
-def get_now_date(now=None):
+def now_date(now=None):
     if not now:
         now = time.gmtime()
 
@@ -42,7 +42,7 @@ def get_now_date(now=None):
 # 현재 시간을 2byte 시간 값으로 변환한다.
 # 입력값 : now - 현재 날짜/시간값 (생략 가능)
 # 리턴값 : 2byte 시간 값
-def get_now_time(now=None):
+def now_time(now=None):
     if not now:
         now = time.gmtime()
 

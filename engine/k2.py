@@ -358,7 +358,7 @@ def main():
         print_error('CloudBread AntiVirus Engine set_plugins')
         return 0
 
-    kav=k2.create_instance()    #백신 엔진 인스턴스 생성
+    kav=k2.create_engine_instance()    #백신 엔진 인스턴스 생성
 
     if not kav:
         print('')
@@ -383,7 +383,7 @@ def main():
 
     # 악성코드 목록 출력
     if options.opt_vlist is True:
-        kav.listvirus(listvirus_callback)
+        kav.having_virus_list(listvirus_callback)
     else:
         if args:
             kav.set_result()    #악성코드 검사 결과를 초기화

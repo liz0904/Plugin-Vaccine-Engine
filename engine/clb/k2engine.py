@@ -19,8 +19,8 @@ class Engine:
         self.debug=debug    #디버깅 여부
 
         self.plugins_path=None  #플러그인 경로
-        self.kmdfiles=[]    #우선순위가 기록된 kmd 리스트
-        self.kmd_modules = []  # 메모리에 로딩된 모듈
+        self.clb_files=[]    #우선순위가 기록된 kmd 리스트
+        self.clb_modules = []  # 메모리에 로딩된 모듈
 
         # 플러그 엔진의 가장 최신 시간 값을 가진다.
         # 초기값으로는 1980-01-01을 지정한다.
@@ -31,66 +31,66 @@ class Engine:
         self.plugins_path=plugins_path  #플러그인 경로 저장
 
         #공개키 로딩
-        pu = rsa.to_rsa_key(os.path.join(plugins_path, 'key.pkr'))
+        public_key = rsa.to_rsa_key(os.path.join(plugins_path, 'key.pkr'))
 
-        if not pu:
+        if not public_key:
             return False
 
         #우선순위 알아내기
-        ret = self.__get_kmd_list(os.path.join(plugins_path, 'cloudbread.clb'), pu)
+        priority = self.get_clb_priority(os.path.join(plugins_path, 'cloudbread.clb'), public_key)
 
-        if not ret: #로딩할 kmd 파일이 없을 시
+        if not priority: #로딩할 kmd 파일이 없을 시
             return False
 
         if self.debug:
-            print("[*] Cloudbread. clb: ")
-            print('     '+str(self.kmdfiles))
+            print("[*] Cloudbread.clb: ")
+            print('     ' + str(self.clb_files))
 
 
         # 우선순위대로 KMD 파일을 로딩한다.
-        for kmd_name in self.kmdfiles:
-            kmd_path = os.path.join(plugins_path, kmd_name)
-            k=clbfile.CLB(kmd_path, pu)   #모든 kmd 파일을 복호화
-            module=clbfile.memory_loading(kmd_name.split('.')[0], k.body)
+        for clb_file in self.clb_files:
+            clb_path = os.path.join(plugins_path, clb_file)
+            decrypt_all=clbfile.CLB(clb_path, public_key)   #모든 kmd 파일을 복호화
+            memory_loading=clbfile.memory_loading(clb_file.split('.')[0], decrypt_all.body)
 
-            if module:  # 메모리 로딩 성공
-                self.kmd_modules.append(module)
+            if memory_loading:  # 메모리 로딩 성공
+                self.clb_modules.append(memory_loading)
                 # 메모리 로딩에 성공한 KMD에서 플러그 엔진의 시간 값 읽기
-                self.__get_last_kmd_build_time(k)
+                self.get_last_clb_time(decrypt_all)
 
         if self.debug:
-            print("[*] kmd_modules: ")
-            print('     '+str(self.kmd_modules))
+            print("[*] clb_modules: ")
+            print('     ' + str(self.clb_modules))
             print("[*] Last updated %s UTC"%self.max_datetime.ctime())
 
         return True
 
     # 복호화 된 플러그인 엔진의 빌드 시간 값 중 최신 값을 보관
     # 입력값 : kmd_info - 복호화 된 플러그인 엔진 정보
-    def __get_last_kmd_build_time(self, kmd_info):
-        d_y, d_m, d_d = kmd_info.date
-        t_h, t_m, t_s = kmd_info.time
+    def get_last_clb_time(self, clb_info):
+        d_y, d_m, d_d = clb_info.date
+        t_h, t_m, t_s = clb_info.time
         t_datetime = datetime.datetime(d_y, d_m, d_d, t_h, t_m, t_s)
 
         if self.max_datetime < t_datetime:
             self.max_datetime = t_datetime
 
     # 백신 엔진의 인스턴스를 생성
-    def create_instance(self):
-        ei = EngineInstance(self.plugins_path, self.max_datetime, self.debug)
-        if ei.create(self.kmd_modules):
-            return ei
+    def create_engine_instance(self):
+        engine_instance = EngineInstance(self.plugins_path, self.max_datetime, self.debug)
+        if engine_instance.make_instance(self.clb_modules):
+            return engine_instance
         else:
             return None
 
     #플러그인 엔진의 로딩 우선순위 알아내는 함수
-    def __get_kmd_list(self, cloudbread_kmd_file, pu):
-        kmdfiles=[] #우선순위 목록
+    def get_clb_priority(self, cloudbread_kmd_file, pu):
+        clb_list=[] #우선순위 목록
 
-        k=clbfile.CLB(cloudbread_kmd_file, pu)    #cloudbread.kmd 파일 복호화
+        decrypt_cloudbread_clb=clbfile.CLB(cloudbread_kmd_file, pu)    #cloudbread.clb 파일 복호화
 
-        if k.body:  #cloudbread.kmd가 읽혔는지?
-            msg=StringIO.StringIO(k.body)
+        if decrypt_cloudbread_clb.body:  #cloudbread.clb가 읽혔는지?
+            msg=StringIO.StringIO(decrypt_cloudbread_clb.body)
 
             while True:
                 line=msg.readline().strip() #엔터 제거
@@ -98,16 +98,15 @@ class Engine:
                 if not line:    #읽을 내용이 없으면 종료
                     break
                 elif line.find('.clb') != -1:   # kmd가 포함되어 있으면 우선순위 목록에 추가
-                    kmdfiles.append(line)
+                    clb_list.append(line)
                 else:
                     continue
 
-        if len(kmdfiles):   #우선순위 목록에 하나라도 있다면 성송
-            self.kmdfiles=kmdfiles
+        if len(clb_list):   #우선순위 목록에 하나라도 있다면 성송
+            self.clb_files=clb_list
             return True
         else:
             return False
-
 
 
 # EngineInstance 클래스
@@ -126,7 +125,7 @@ class EngineInstance:
         self.options={} #옵션
         self.set_options()  #기본 옵션 설정
 
-        self.kavmain_inst=[]    #모든 플러그인의 KaVMain 인스턴스
+        self.clbmain_instance=[]    #모든 플러그인의 KaVMain 인스턴스
 
         self.update_info=[]
 
@@ -134,66 +133,66 @@ class EngineInstance:
         self.identified_virus=set() #유니크한 악성코드 개수를 구하기 위해 사용
 
     def init(self):
-        t_kavmain_inst=[]   #최종 인스턴스 리스트
-        print(len(self.kavmain_inst))
+        clb_instance_list=[]   #최종 인스턴스 리스트
+        print(len(self.clbmain_instance))
 
         if self.debug:
-            print('[*] KavMain.init(): ')
+            print('[*] CLBMain.init(): ')
 
-        for inst in self.kavmain_inst:
+        for clb_instance in self.clbmain_instance:
             try:
                 #플러그인 엔진 init 함수 호출
-                ret=inst.init(self.plugins_path)
-                if not ret:
-                    t_kavmain_inst.append(inst)
+                clb_init=clb_instance.init(self.plugins_path)
+                if not clb_init:
+                    clb_instance_list.append(clb_instance)
                     if self.debug:
-                        print('[-] %s.init(): %d' %(inst.__module__, ret))
+                        print('[-] %s.init(): %d' %(clb_instance.__module__, clb_init))
             except AttributeError:
                 continue
 
-        self.kavmain_inst=t_kavmain_inst    #최종 KavMain 인스턴스 등록
+        self.clbmain_instance=clb_instance_list    #최종 KavMain 인스턴스 등록
 
-        if len(self.kavmain_inst):
+        if len(self.clbmain_instance):
             if self.debug:
-                print('[*] Count of KavMain.init(): %d' % (len(self.kavmain_inst)))
+                print('[*] Count of CLBMain.init(): %d' % (len(self.clbmain_instance)))
             return True
         else:
             return False
 
     def uninit(self):
         if self.debug:
-            print('[*] KavMain.uninit(): ')
+            print('[*] CLBMain.uninit(): ')
 
-        for inst in self.kavmain_inst:
+        for clb_instance in self.clbmain_instance:
             try:
-                ret=inst.uninit()
+                clb_uninit=clb_instance.uninit()
                 if self.debug:
-                    print('[-] %s.uninit: %d' % (inst.__module__, ret))
+                    print('[-] %s.uninit: %d' % (clb_instance.__module__, clb_uninit))
             except AttributeError:
                 continue
 
-    def getinfo(self):
-        ginfo = []  # 플러그인 엔진 정보
+    def get_info(self):
+        engine_info = []  # 플러그인 엔진 정보
 
         if self.debug:
-            print '[*] KavMain.getinfo() :'
+            print '[*] CLBMain.getinfo() :'
 
-        for inst in self.kavmain_inst:
+        for instance in self.clbmain_instance:
             try:
-                ret = inst.getinfo()
-                ginfo.append(ret)
+                ret = instance.get_info()
+                engine_info.append(ret)
 
                 if self.debug:
-                    print('    [-] %s.getinfo() :' % inst.__module__)
+                    print('    [-] %s.getinfo() :' % instance.__module__)
                     for key in ret.keys():
                         print('        - %-10s : %s' % (key, ret[key]))
             except AttributeError:
                 continue
 
-        return ginfo
+        return engine_info
 
 
-    # 백신 엔진의 악성코드 검사 결과를 초기화
+    # 백신 엔진의 악성코드 검사 결과를 초기화--------------------------------------------------------------------------------여기 못고쳤다 시발
     def set_result(self):
         self.result['Folders'] = 0  # 폴더 수
         self.result['Files'] = 0  # 파일 수
@@ -213,8 +212,8 @@ class EngineInstance:
 
     # 플러그인 엔진이 진단/치료 할 수 있는 악성코드 목록을 얻음
     # 리턴값 : 악성코드 목록 (콜백함수 사용시 아무런 값도 없음)
-    def listvirus(self, *callback):
-        vlist = []  # 진단/치료 가능한 악성코드 목록
+    def having_virus_list(self, *callback):
+        virus_list = []  # 진단/치료 가능한 악성코드 목록
 
         argc = len(callback)  # 가변인자 확인
 
@@ -226,45 +225,45 @@ class EngineInstance:
             return []
 
         if self.debug:
-            print('[*] KavMain.listvirus() :')
+            print('[*] CLBMain.having_virus_list() :')
 
-        for inst in self.kavmain_inst:
+        for i in self.clbmain_instance:
             try:
-                ret = inst.listvirus()
+                list = i.having_virus_list()
 
                 # callback 함수가 있다면 callback 함수 호출
                 if isinstance(cb_fn, types.FunctionType):
-                    cb_fn(inst.__module__, ret)
+                    cb_fn(i.__module__, list)
                 else:  # callback 함수가 없으면 악성코드 목록을 누적하여 리턴
-                    vlist += ret
+                    virus_list += list
 
                 if self.debug:
-                    print('    [-] %s.listvirus() :' % inst.__module__)
-                    for vname in ret:
+                    print('    [-] %s.listvirus() :' % i.__module__)
+                    for vname in list:
                         print('        - %s' % vname)
             except AttributeError:
                 continue
 
-        return vlist
+        return virus_list
 
     # 백신엔진의 인스턴스를 생성
     # 인자값 : kmd_modules - 메모리에 로딩된 KMD 모듈 리스트
     # 리턴값 : 성공 여부
-    def create(self, kmd_modules):  # 백신 엔진 인스턴스를 생성
-        for mod in kmd_modules:
+    def make_instance(self, modules):  # 백신 엔진 인스턴스를 생성
+        for mod in modules:
             try:
-                t = mod.KavMain()  # 각 플러그인 KavMain 인스턴스 생성
-                self.kavmain_inst.append(t)
+                t = mod.CLBMain()  # 각 플러그인 KavMain 인스턴스 생성
+                self.clbmain_instance.append(t)
             except AttributeError:  # KavMain 클래스 존재하지 않음
                 continue
 
-        if len(self.kavmain_inst):  # KavMain 인스턴스가 하나라도 있으면 성공
+        if len(self.clbmain_instance):  # KavMain 인스턴스가 하나라도 있으면 성공
             if self.debug:
-                print('[*] Count of KavMain : %d' % (len(self.kavmain_inst)))
+                print('[*] Count of KavMain : %d' % (len(self.clbmain_instance)))
             return True
         else:
             return False
-
+#--------------------------------------------------------------------------------------여기서부터도 안고침-------------------------------------------------------------------
     # 플러그인 엔진에게 악성코드 검사를 요청
     # 입력값 : filename - 악성코 검사 대상 파일 또는 폴더 이름
     #          callback - 검사 시 출력 화면 관련 콜백 함수
@@ -411,7 +410,7 @@ class EngineInstance:
             fp=open(filename, 'rb')
             mm=mmap.mmap(fp.fileno(), 0, access=mmap.ACCESS_READ)
 
-            for i,inst in enumerate(self.kavmain_inst):
+            for i,inst in enumerate(self.clbmain_instance):
                 try:
                     ret,vname, mid=inst.scan(mm, filename)
                     if ret: #악성코드를 발견하면 추가 악성코드 검사를 중단
@@ -449,7 +448,7 @@ class EngineInstance:
 
         try:
             # 악성코드를 진단한 플러그인 엔진에게만 치료를 요청
-            inst = self.kavmain_inst[engine_id]
+            inst = self.clbmain_instance[engine_id]
             ret = inst.disinfect(filename, malware_id)
 
             if self.debug:
@@ -476,9 +475,9 @@ class EngineInstance:
     def get_signum(self):
         signum=0 #진단/치료 가능한 악성코드 수
 
-        for inst in self.kavmain_inst:
+        for inst in self.clbmain_instance:
             try:
-                ret=inst.getinfo()
+                ret=inst.get_info()
 
                 if 'sig_num' in ret:
                     signum+=ret['sig_num']
@@ -498,9 +497,9 @@ class EngineInstance:
                 arc_name=file_struct.get_zip_file()
                 name_in_arc=file_struct.get_zipped_file()
 
-                for inst in self.kavmain_inst:
+                for inst in self.clbmain_instance:
                     try:
-                        unpack_data=inst.unarc(arc_engine_id, arc_name, name_in_arc)
+                        unpack_data=inst.unzip(arc_engine_id, arc_name, name_in_arc)
 
                         if unpack_data:
                             rname=tempfile.mktemp(prefix='ktmp')
@@ -529,11 +528,11 @@ class EngineInstance:
         level=file_struct.get_level()
 
         #압축 엔진 모듈의 arclist 멤버 함수 호출
-        for inst in self.kavmain_inst:
+        for inst in self.clbmain_instance:
 
             try:
                 if self.options['opt_arc']:
-                    arc_list=inst.arclist(rname, fileformat)
+                    arc_list=inst.zip_struct_list(rname, fileformat)
 
                 if len(arc_list):   #압축 목록이 존재한다면 추가하고 종료
                     for alist in arc_list:
@@ -567,7 +566,7 @@ class EngineInstance:
             mm=mmap.mmap(fp.fileno(), 0, access=mmap.ACCESS_READ)
 
             #엔진 모듈의 format 멤버 함수 호출
-            for inst in self.kavmain_inst:
+            for inst in self.clbmain_instance:
                 try:
                     ff=inst.format(mm, filename)
                     if ff:
@@ -643,9 +642,9 @@ class EngineInstance:
             arc_name = t[0].get_zip_file()
             arc_engine_id = t[0].get_zip_engine_id()
 
-            for inst in self.kavmain_inst:
+            for inst in self.clbmain_instance:
                 try:
-                    ret=inst.mkarc(arc_engine_id, arc_name, t)
+                    ret=inst.bool_rezip(arc_engine_id, arc_name, t)
                     if ret: #최종 압축 성공
                         break
                 except AttributeError:

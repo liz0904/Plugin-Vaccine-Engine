@@ -3,7 +3,7 @@
 import os
 from engine.plugins import cryptolib
 
-class KavMain:
+class CLBMain:
     # ---------------------------------------------------------------------
     # init(self, plugins_path)
     # 플러그인 엔진을 초기화 한다.
@@ -12,7 +12,6 @@ class KavMain:
     # 리턴값 : 0 - 성공, 0 이외의 값 - 실패
     # ---------------------------------------------------------------------
     def init(self, plugins_path, verbose=False):  # 플러그인 엔진 초기화
-        print("SSSSSSSSSSSSSSSSS")
         return 0  # 플러그인 엔진 초기화 성공
 
     # ---------------------------------------------------------------------
@@ -32,12 +31,12 @@ class KavMain:
     # ---------------------------------------------------------------------
     def scan(self, filehandle, filename):  # 악성코드 검사
         try:
-            mm = filehandle
+            fh = filehandle
 
             size = os.path.getsize(filename)  # 검사 대상 파일 크기를 구한다.
             if size == 68:  # EICAR Test 악성코드의 크기와 일치하는가?
                 # 크기가 일치한다면 MD5 해시 계산
-                fmd5 = cryptolib.md5(mm[:68])
+                fmd5 = cryptolib.md5(fh[:68])
 
                 # 파일에서 얻은 해시 값과 EICAR Test 악성코드의 해시 값이 일치하는가?
                 if fmd5 == '44d88612fea8a8f36de82e1278abb02f':
@@ -49,10 +48,10 @@ class KavMain:
         return False, '', -1
 
     # 악성코드를 치료한다.
-    def disinfect(self, filename, malware_id):  # 악성코드 치료
+    def disinfect(self, filename, virus_id):  # 악성코드 치료
         try:
             # 악성코드 진단 결과에서 받은 ID 값이 0인가?
-            if malware_id == 0:
+            if virus_id == 0:
                 os.remove(filename)  # 파일 삭제
                 return True  # 치료 완료 리턴
         except IOError:
@@ -60,12 +59,12 @@ class KavMain:
 
         return False  # 치료 실패 리턴
 
-    def listvirus(self):  # 진단 가능한 악성코드 리스트
-        vlist = list()  # 리스트형 변수 선언
+    def virus_list(self):  # 진단 가능한 악성코드 리스트
+        list = list()  # 리스트형 변수 선언
 
-        vlist.append('EICAR-Test-File (not a virus)')  # 진단/치료하는 악성코드 이름 등록
+        list.append('EICAR-Test-File (not a virus)')  # 진단/치료하는 악성코드 이름 등록
 
-        return vlist
+        return list
 
     # getinfo(self)
     def getinfo(self):

@@ -10,7 +10,7 @@ import sys
 import zlib
 import rc4
 import rsa
-import k2timelib
+import date_time
 import marshal
 import imp
 
@@ -47,8 +47,8 @@ def make_clb_file(target_file, debug=False):
     file_signature = 'CLBR'
 
     # 현재 날짜와 시간
-    now_date = k2timelib.get_now_date()
-    now_time = k2timelib.get_now_time()
+    now_date = date_time.now_date()
+    now_time = date_time.now_time()
 
     # 날짜와 시간 값을 2Byte로 변경
     byte_date = struct.pack('<H', now_date)
@@ -217,12 +217,12 @@ class CLB(CLBConstants):
         # KMD 파일 날짜 읽기
         tmp = self.encrypted_data[self.DATE_POSITION:
                                 self.DATE_POSITION + self.DATE_LENGTH]
-        self.date = k2timelib.convert_date(struct.unpack('<H', tmp)[0])
+        self.date = date_time.get_date(struct.unpack('<H', tmp)[0])
 
         # KMD 파일 시간 읽기
         tmp = self.encrypted_data[self.TIME_POSITION:
                                 self.TIME_POSITION + self.TIME_LENGTH]
-        self.time = k2timelib.convert_time(struct.unpack('<H', tmp)[0])
+        self.time = date_time.get_time(struct.unpack('<H', tmp)[0])
 
         # KMD 파일에서 MD5 읽기
         md5 = self.get_md5()
