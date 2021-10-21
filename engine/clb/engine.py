@@ -277,6 +277,7 @@ class EngineInstance:
             'engine_id': -1  # 악성코드를 발견한 플러그인 엔진 ID
         }
 
+
         try:  # 콜백 함수 저장
             scan_callback_function = callback[0]
             disinfect_callback_function = callback[1]
@@ -346,7 +347,6 @@ class EngineInstance:
                         self.result['Infected_files']+=1
                         self.identified_virus.update([vname])
 
-
                     #콜백 호출 또는 검사 리턴값 생성
                     ret_value['result'] = ret  # 악성코드 발견 여부
                     ret_value['engine_id'] = eid  # 엔진 ID
@@ -372,6 +372,7 @@ class EngineInstance:
 
                       #압축 파일 최종 치료 정리
                     self.update_info(clb_file_info, update_callback_function)
+
 
                     if not ret:
                         arc_file_list=self.ziplist(clb_file_info, ff)
@@ -405,7 +406,7 @@ class EngineInstance:
 
             for i,inst in enumerate(self.main_inst):
                 try:
-                    ret,vname, mid=inst.scan(mm, name)
+                    ret,vname,mid=inst.scan(mm, name)
                     if ret: #악성코드를 발견하면 추가 악성코드 검사를 중단
                         eid=i   #악성코드를 발견한 플러그인 엔진 ID
 
