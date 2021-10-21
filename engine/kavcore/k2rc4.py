@@ -14,6 +14,7 @@ class RC4:
 
     # 암호 설정
     # 인자값 : password - rc4의 암호문
+    # -----------------------------------------------------------------
     def set_key(self, password):
         for i in range(len(password)):
             self.__Key.append(ord(password[i]))

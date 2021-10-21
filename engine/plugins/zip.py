@@ -3,7 +3,7 @@
 import zipfile
 
 # KavMain 클래스
-class Main:
+class KavMain:
     # 플러그인 엔진을 초기화
     # 인력값 : plugins_path - 플러그인 엔진의 위치
     def init(self, plugins_path):  # 플러그인 엔진 초기화
@@ -67,13 +67,13 @@ class Main:
             zfile=zipfile.ZipFile(arc_name, 'w')
 
             for file_info in file_infos:
-                rname=file_info.get_detect_filename()  #검사 대상 파일
+                rname=file_info.get_filename()  #검사 대상 파일
 
                 try:
                     with open(rname, 'rb') as fp:
                         buf=fp.read()
 
-                        a_name=file_info.get_unzip_filename()
+                        a_name=file_info.get_filename_in_archive()
                         zfile.writestr(a_name, buf)
                 except IOError:
                     pass

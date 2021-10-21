@@ -3,7 +3,7 @@
 import os
 from engine.plugins import cryptolib
 
-class Main:
+class KavMain:
     # ---------------------------------------------------------------------
     # init(self, plugins_path)
     # 플러그인 엔진을 초기화 한다.

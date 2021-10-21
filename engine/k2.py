@@ -5,8 +5,8 @@ import os
 import sys
 from msvcrt import getch
 from optparse import OptionParser
-import clb.engine
-from ctypes import windll, Structure, c_short, c_ushort, byref
+import kavcore.k2engine
+from ctypes import windll, Structure, c_short, c_ushort,  byref
 
 # 주요 상수
 KAV_VERSION = '0.01'
@@ -27,6 +27,7 @@ FOREGROUND_YELLOW = 0x0006
 FOREGROUND_GREY = 0x0007
 FOREGROUND_INTENSITY = 0x0008  # foreground color is intensified.
 
+from ctypes import windll, Structure, c_short, c_ushort, byref
 
 SHORT = c_short
 WORD = c_ushort
@@ -112,7 +113,10 @@ def display_line(filename, message, message_color):
     cprint(fname + ' ', FOREGROUND_GREY)
     cprint(message + '\n', message_color)
 
-# 백신 로고를 출력
+# -------------------------------------------------------------------------
+# print_k2logo()
+# 백신 로고를 출력한다
+# -------------------------------------------------------------------------
 def print_k2logo():
     logo = '''CloudBread Anti-Virus I (for %s) Ver %s (%s)
 Copyright (C) 2021-%s CloudBread. All rights reserved.
@@ -175,7 +179,7 @@ def define_options():
 
 #사용법
 def print_usage():
-    print('\nUsage: cloudbread.py path[s] [options]')
+    print('\nUsage: k2.py path[s] [options]')
 
 # 백신 옵션을 분석
 def parser_options():
@@ -217,11 +221,11 @@ def scan_callback(ret_value):
 
     fs=ret_value['file_struct']
 
-    if len(fs.get_another_filename()) !=0:
-        disp_name = '%s (%s)' % (fs.get_root_filename(),
-                            fs.get_another_filename())
+    if len(fs.get_additional_filename()) !=0:
+        disp_name = '%s (%s)' % (fs.get_master_filename(),
+                            fs.get_additional_filename())
     else:
-        disp_name='%s'%(fs.get_root_filename())
+        disp_name='%s'%(fs.get_master_filename())
 
     if ret_value['result']:
         state = 'infected'
@@ -242,19 +246,19 @@ def scan_callback(ret_value):
             print ch
 
             if ch == 'd':
-                return clb.menu.CLB_DISINFECT  #악성코드 치료
+                return kavcore.k2const.K2_ACTION_DISINFECT  #악성코드 치료
             elif ch == 'l':
-                return clb.menu.CLB_DELETE     #악성코드 삭제
+                return kavcore.k2const.K2_ACTION_DELETE     #악성코드 삭제
             elif ch == 'i':
-                return clb.menu.CLB_IGNORE     #악성코드 치료 무시
+                return kavcore.k2const.K2_ACTION_IGNORE     #악성코드 치료 무시
             elif ch == 'q':
-                return clb.menu.CLB_QUIT
+                return kavcore.k2const.K2_ACTION_QUIT
     elif g_options.opt_dis:  # 치료 옵션
-        return clb.menu.CLB_DISINFECT
+        return kavcore.k2const.K2_ACTION_DISINFECT
     elif g_options.opt_del:  # 삭제 옵션
-        return clb.menu.CLB_DELETE
+        return kavcore.k2const.K2_ACTION_DELETE
 
-    return clb.menu.CLB_IGNORE #default 값: 악성코드 치료 무시
+    return kavcore.k2const.K2_ACTION_IGNORE #default 값: 악성코드 치료 무시
 
 
 
@@ -264,32 +268,34 @@ def disinfect_callback(ret_value, action_type):
     fs = ret_value['file_struct']
     message = ''
 
-    if len(fs.get_another_filename()) != 0:
-        disp_name = '%s (%s)' % (fs.get_root_filename(), fs.get_another_filename())
+    if len(fs.get_additional_filename()) != 0:
+        disp_name = '%s (%s)' % (fs.get_master_filename(), fs.get_additional_filename())
     else:
-        disp_name = '%s' % (fs.get_root_filename())
+        disp_name = '%s' % (fs.get_master_filename())
 
     if fs.is_modify():  # 수정 성공?
-        if action_type == clb.menu.CLB_DISINFECT:
+        if action_type == kavcore.k2const.K2_ACTION_DISINFECT:
             message = 'disinfected'
-        elif action_type == clb.menu.CLB_DELETE:
+        elif action_type == kavcore.k2const.K2_ACTION_DELETE:
             message = 'deleted'
 
         message_color = FOREGROUND_GREEN | FOREGROUND_INTENSITY
     else:   #수정 실패
-        if action_type == clb.menu.CLB_DISINFECT:
+        if action_type == kavcore.k2const.K2_ACTION_DISINFECT:
             message = 'disinfection failed'
-        elif action_type == clb.menu.CLB_DELETE:
+        elif action_type == kavcore.k2const.K2_ACTION_DELETE:
             message = 'deletion failed'
 
         message_color = FOREGROUND_RED | FOREGROUND_INTENSITY
 
     display_line(disp_name, message, message_color)
 
+# -------------------------------------------------------------------------
 # update의 콜백 함수
+# -------------------------------------------------------------------------
 def update_callback(ret_file_info):
     if ret_file_info.is_modify():  # 수정되었다면 결과 출력
-        disp_name = ret_file_info.get_detect_filename()
+        disp_name = ret_file_info.get_filename()
 
         message = 'updated'
         message_color = FOREGROUND_GREEN | FOREGROUND_INTENSITY
@@ -298,7 +304,8 @@ def update_callback(ret_file_info):
 
 
 
-# 악성코드 검사 결과 출력
+# print_result(result)
+# 악성코드 검사 결과를 출력한다.
 # 입력값 : result - 악성코드 검사 결과
 def print_result(result):
 
@@ -317,7 +324,7 @@ def print_result(result):
 #listvirus의 콜백함수
 def listvirus_callback(plugin_name, vnames):
     for vname in vnames:
-        print('%-50s [%s.clb]'%(vname, plugin_name))
+        print('%-50s [%s.kmd]'%(vname, plugin_name))
 
 # main()
 def main():
@@ -345,26 +352,26 @@ def main():
         return 0
 
     #백신 엔진 구동
-    k2=clb.engine.Engine()    #엔진 클래스
-    if not k2.loading('plugins'):   #플러그인 엔진 설정
+    k2=kavcore.k2engine.Engine()    #엔진 클래스
+    if not k2.set_plugins('plugins'):   #플러그인 엔진 설정
         print('')
-        print_error('CloudBread AntiVirus Engine loading')
+        print_error('CloudBread AntiVirus Engine set_plugins')
         return 0
 
-    kav=k2.make_instance()    #백신 엔진 인스턴스 생성
+    kav=k2.create_instance()    #백신 엔진 인스턴스 생성
 
     if not kav:
         print('')
-        print_error('CloudBread AntiVirus Engine make_instance')
+        print_error('CloudBread AntiVirus Engine create_instance')
         return 0
 
     if not kav.init():
         print('')
-        print_error('CloudBread AntiVirus Engine init.')
+        print_error('CloudBread AntiVirus Engine init')
         return 0
 
     #엔진 버전 출력
-    c=kav.check_version()
+    c=kav.get_version()
     msg='\rLast Updated %s UTC\n'%c.ctime()
     cprint(msg,FOREGROUND_GREY)
 
@@ -379,7 +386,7 @@ def main():
         kav.listvirus(listvirus_callback)
     else:
         if args:
-            kav.show_result()    #악성코드 검사 결과를 초기화
+            kav.set_result()    #악성코드 검사 결과를 초기화
 
             #검사용 path
             for scan_path in args:
@@ -387,7 +394,6 @@ def main():
 
                 if os.path.exists(scan_path):   #폴더나 파일이 존재하는가?
                     kav.scan(scan_path, scan_callback)
-                    print("aaaaaaaaaaaaaaaaaaaaaaaaa")
                 else:
                     print_error('Invalid path: \'%s\''%scan_path)
 

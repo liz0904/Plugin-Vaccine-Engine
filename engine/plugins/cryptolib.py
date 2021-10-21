@@ -1,6 +1,9 @@
 # -*- coding:utf-8 -*-
 
 import hashlib
+import zlib
+from ctypes import c_ushort
+
 
 # md5(data)
 # 주어진 데이터에 대해 MD5 해시를 구한다.
@@ -10,7 +13,7 @@ def md5(data):
     return hashlib.md5(data).hexdigest()
 
 # KavMain 클래스
-class Main:
+class KavMain:
     def init(self, plugins_path, verbose=False):  # 플러그인 엔진 초기화
         return 0  # 플러그인 엔진 초기화 성공
 
@@ -20,7 +23,7 @@ class Main:
     def getinfo(self):  # 플러그인 엔진의 주요 정보
         info = dict()  # 사전형 변수 선언
 
-        info['author'] = 'Cloudbread'  # 제작자
+        info['author'] = 'Kei Choi'  # 제작자
         info['version'] = '1.0'  # 버전
         info['title'] = 'Crypto Library'  # 엔진 설명
         info['kmd_name'] = 'cryptolib'  # 엔진 파일 이름
