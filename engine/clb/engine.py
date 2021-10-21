@@ -386,7 +386,7 @@ class EngineInstance:
 
     def scanfile(self, file_struct, fileformat):
         if self.debug:
-            print('[*] Main.scan(): ')
+            print('[*] Main.scan: ')
 
         fp=None
         mm=None
