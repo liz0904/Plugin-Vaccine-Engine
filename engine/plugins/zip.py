@@ -67,13 +67,13 @@ class KavMain:
             zfile=zipfile.ZipFile(arc_name, 'w')
 
             for file_info in file_infos:
-                rname=file_info.get_filename()  #검사 대상 파일
+                rname=file_info.get_target_file()  #검사 대상 파일
 
                 try:
                     with open(rname, 'rb') as fp:
                         buf=fp.read()
 
-                        a_name=file_info.get_filename_in_archive()
+                        a_name=file_info.get_zipped_file()
                         zfile.writestr(a_name, buf)
                 except IOError:
                     pass

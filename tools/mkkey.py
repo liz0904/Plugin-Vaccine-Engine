@@ -7,7 +7,7 @@ s = os.path.dirname(
     os.path.dirname(
         os.path.abspath(__file__)
     )
-) + os.sep + 'Engine' + os.sep + 'kavcore'
+) + os.sep + 'Engine' + os.sep + 'clb'
 
 sys.path.append(s)
 

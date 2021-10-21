@@ -5,7 +5,7 @@ import os
 import sys
 from msvcrt import getch
 from optparse import OptionParser
-import kavcore.k2engine
+import clb.k2engine
 from ctypes import windll, Structure, c_short, c_ushort,  byref
 
 # 주요 상수
@@ -221,11 +221,11 @@ def scan_callback(ret_value):
 
     fs=ret_value['file_struct']
 
-    if len(fs.get_additional_filename()) !=0:
-        disp_name = '%s (%s)' % (fs.get_master_filename(),
-                            fs.get_additional_filename())
+    if len(fs.get_zip_structure_file()) !=0:
+        disp_name = '%s (%s)' % (fs.root_file(),
+                            fs.get_zip_structure_file())
     else:
-        disp_name='%s'%(fs.get_master_filename())
+        disp_name='%s'%(fs.root_file())
 
     if ret_value['result']:
         state = 'infected'
@@ -246,19 +246,19 @@ def scan_callback(ret_value):
             print ch
 
             if ch == 'd':
-                return kavcore.k2const.K2_ACTION_DISINFECT  #악성코드 치료
+                return clb.menu.MENU_DISINFECT  #악성코드 치료
             elif ch == 'l':
-                return kavcore.k2const.K2_ACTION_DELETE     #악성코드 삭제
+                return clb.menu.MENU_DELETE     #악성코드 삭제
             elif ch == 'i':
-                return kavcore.k2const.K2_ACTION_IGNORE     #악성코드 치료 무시
+                return clb.menu.MENU_IGNORE     #악성코드 치료 무시
             elif ch == 'q':
-                return kavcore.k2const.K2_ACTION_QUIT
+                return clb.menu.MENU_QUIT
     elif g_options.opt_dis:  # 치료 옵션
-        return kavcore.k2const.K2_ACTION_DISINFECT
+        return clb.menu.MENU_DISINFECT
     elif g_options.opt_del:  # 삭제 옵션
-        return kavcore.k2const.K2_ACTION_DELETE
+        return clb.menu.MENU_DELETE
 
-    return kavcore.k2const.K2_ACTION_IGNORE #default 값: 악성코드 치료 무시
+    return clb.menu.MENU_IGNORE #default 값: 악성코드 치료 무시
 
 
 
@@ -268,22 +268,22 @@ def disinfect_callback(ret_value, action_type):
     fs = ret_value['file_struct']
     message = ''
 
-    if len(fs.get_additional_filename()) != 0:
-        disp_name = '%s (%s)' % (fs.get_master_filename(), fs.get_additional_filename())
+    if len(fs.get_zip_structure_file()) != 0:
+        disp_name = '%s (%s)' % (fs.root_file(), fs.get_zip_structure_file())
     else:
-        disp_name = '%s' % (fs.get_master_filename())
+        disp_name = '%s' % (fs.root_file())
 
-    if fs.is_modify():  # 수정 성공?
-        if action_type == kavcore.k2const.K2_ACTION_DISINFECT:
+    if fs.bool_modified():  # 수정 성공?
+        if action_type == clb.menu.MENU_DISINFECT:
             message = 'disinfected'
-        elif action_type == kavcore.k2const.K2_ACTION_DELETE:
+        elif action_type == clb.menu.MENU_DELETE:
             message = 'deleted'
 
         message_color = FOREGROUND_GREEN | FOREGROUND_INTENSITY
     else:   #수정 실패
-        if action_type == kavcore.k2const.K2_ACTION_DISINFECT:
+        if action_type == clb.menu.MENU_DISINFECT:
             message = 'disinfection failed'
-        elif action_type == kavcore.k2const.K2_ACTION_DELETE:
+        elif action_type == clb.menu.MENU_DELETE:
             message = 'deletion failed'
 
         message_color = FOREGROUND_RED | FOREGROUND_INTENSITY
@@ -294,8 +294,8 @@ def disinfect_callback(ret_value, action_type):
 # update의 콜백 함수
 # -------------------------------------------------------------------------
 def update_callback(ret_file_info):
-    if ret_file_info.is_modify():  # 수정되었다면 결과 출력
-        disp_name = ret_file_info.get_filename()
+    if ret_file_info.bool_modified():  # 수정되었다면 결과 출력
+        disp_name = ret_file_info.get_target_file()
 
         message = 'updated'
         message_color = FOREGROUND_GREEN | FOREGROUND_INTENSITY
@@ -352,7 +352,7 @@ def main():
         return 0
 
     #백신 엔진 구동
-    k2=kavcore.k2engine.Engine()    #엔진 클래스
+    k2=clb.k2engine.Engine()    #엔진 클래스
     if not k2.set_plugins('plugins'):   #플러그인 엔진 설정
         print('')
         print_error('CloudBread AntiVirus Engine set_plugins')

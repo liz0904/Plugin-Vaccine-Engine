@@ -7,11 +7,11 @@ s = os.path.dirname(
     os.path.dirname(
         os.path.abspath(__file__)
     )
-) + os.sep + 'Engine' + os.sep + 'kavcore'
+) + os.sep + 'Engine' + os.sep + 'clb'
 
 sys.path.append(s)
 
-import k2kmdfile
+import clbfile
 
 if __name__=='__main__':
     #인자값 체크
@@ -19,4 +19,4 @@ if __name__=='__main__':
         print("Usage: kmake.py [python source]")
         exit(0)
 
-    k2kmdfile.make(sys.argv[1], True)
+    clbfile.make_clb_file(sys.argv[1], True)
