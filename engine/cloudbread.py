@@ -355,7 +355,7 @@ def main():
 
     if not kav:
         print('')
-        print_error('CloudBread AntiVirus Engine create_instance')
+        print_error('CloudBread AntiVirus Engine make_instance')
         return 0
 
     if not kav.init():
