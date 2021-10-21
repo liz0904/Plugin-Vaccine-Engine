@@ -8,7 +8,7 @@ import tempfile
 import types
 
 import clbfile
-import k2rsa
+import rsa
 import file
 import menu
 
@@ -31,7 +31,7 @@ class Engine:
         self.plugins_path=plugins_path  #플러그인 경로 저장
 
         #공개키 로딩
-        pu = k2rsa.read_key(os.path.join(plugins_path, 'key.pkr'))
+        pu = rsa.to_rsa_key(os.path.join(plugins_path, 'key.pkr'))
 
         if not pu:
             return False

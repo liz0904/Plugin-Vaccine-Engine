@@ -8,8 +8,8 @@ import shutil
 import struct
 import sys
 import zlib
-import k2rc4
-import k2rsa
+import rc4
+import rsa
 import k2timelib
 import marshal
 import imp
@@ -31,10 +31,10 @@ def make_clb_file(target_file, debug=False):
 
     # Simple RSA를 사용하기 위해 공개키와 개인키를 로딩한다.
     # 공개키를 로딩한다.
-    rsa_public = k2rsa.read_key('engine/plugins/key.pkr')
+    rsa_public = rsa.to_rsa_key('engine/plugins/key.pkr')
 
     # 개인키를 로딩한다.
-    rsa_private = k2rsa.read_key('engine/plugins/key.skr')
+    rsa_private = rsa.to_rsa_key('engine/plugins/key.skr')
 
     if not (rsa_private and rsa_public):  # 키 파일을 찾을 수 없다
         if debug:
@@ -71,12 +71,12 @@ def make_clb_file(target_file, debug=False):
             random_key += chr(random.randint(0, 0xff))
 
         # 생성된 RC4 키를 암호화
-        encrypt_key = k2rsa.crypt(random_key, rsa_private)  # 개인키로 암호화
+        encrypt_key = rsa.crypt(random_key, rsa_private)  # 개인키로 암호화
         if len(encrypt_key) != 32:  # 암호화에 오류가 존재하면 다시 생성
             continue
 
         # 암호화된 RC4 키를 복호화
-        decrypt_key = k2rsa.crypt(encrypt_key, rsa_public)  # 공개키로 복호화
+        decrypt_key = rsa.crypt(encrypt_key, rsa_public)  # 공개키로 복호화
 
         # 생성된 RC4 키에 문제 없음을 확인한다.
         if random_key == decrypt_key and len(random_key) == len(decrypt_key):
@@ -87,13 +87,13 @@ def make_clb_file(target_file, debug=False):
             a = open(pyc_name, 'rb').read()
             b = zlib.compress(a)
 
-            rc4_encrypt = k2rc4.RC4()  # RC4 알고리즘 사용
+            rc4_encrypt = rc4.RC4()  # RC4 알고리즘 사용
             rc4_encrypt.set_key(random_key)  # RC4 알고리즘에 key를 적용한다.
 
             # 압축된 pyc 파일 이미지를 RC4로 암호화한다.
             c = rc4_encrypt.crypt(b)
 
-            rc4_encrypt = k2rc4.RC4()  # RC4 알고리즘 사용
+            rc4_encrypt = rc4.RC4()  # RC4 알고리즘 사용
             rc4_encrypt.set_key(random_key)  # RC4 알고리즘에 key를 적용한다.
 
             # 암호화한 압축된 pyc 파일 이미지 복호화하여 결과가 같은지를 확인한다.
@@ -114,11 +114,11 @@ def make_clb_file(target_file, debug=False):
 
             m = md5hash.decode('hex')
 
-            md5_encrypt = k2rsa.crypt(m, rsa_private)  # MD5 결과를 개인키로 암호화
+            md5_encrypt = rsa.crypt(m, rsa_private)  # MD5 결과를 개인키로 암호화
             if len(md5_encrypt) != 32:  # 암호화에 오류가 존재하면 다시 생성
                 continue
 
-            md5_decrypt = k2rsa.crypt(md5_encrypt, rsa_public)  # 암호화횓 MD5를 공개키로 복호화
+            md5_decrypt = rsa.crypt(md5_encrypt, rsa_public)  # 암호화횓 MD5를 공개키로 복호화
 
             if m == md5_decrypt:  # 원문과 복호화 결과가 같은가?
                 # 헤더, 본문, 꼬리를 모두 합친다.
@@ -251,7 +251,7 @@ class CLB(CLBConstants):
         clb_rc4_key = self.encrypted_data[self.RC4_KEY_POSITION:
                                 self.RC4_KEY_POSITION
                                 + self.RC4_KEY_LENGTH]
-        return k2rsa.crypt(clb_rc4_key, self.rsa_public)
+        return rsa.crypt(clb_rc4_key, self.rsa_public)
 
     # kmd 파일의 body를 얻는다.
     # 리턴값 : body
@@ -259,7 +259,7 @@ class CLB(CLBConstants):
         clb_body = self.encrypted_data[self.RC4_KEY_POSITION
                                          + self.RC4_KEY_LENGTH
                                          :self.MD5_POSITION]
-        r = k2rc4.RC4()
+        r = rc4.RC4()
         r.set_key(self.rc4_key)
         return r.crypt(clb_body)
 
@@ -267,7 +267,7 @@ class CLB(CLBConstants):
     # 리턴값 : md5
     def get_md5(self):
         clb_md5 = self.encrypted_data[self.MD5_POSITION:]
-        return k2rsa.crypt(clb_md5, self.rsa_public)
+        return rsa.crypt(clb_md5, self.rsa_public)
 
 # 주어진 모듈 이름으로 파이썬 코드를 메모리에 로딩한다.
 # 입력값 : mod_name - 모듈 이름

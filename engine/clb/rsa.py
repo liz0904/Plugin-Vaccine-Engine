@@ -11,7 +11,7 @@ import random
 #
 # 인자값 : a, b    - 정수
 # 리턴값 : d, x, y - 유클리드 호제법 해
-def __ext_euclid(a, b):
+def euclid(a, b):
     i = -1
     list_r = list()
     list_q = list()
@@ -59,7 +59,7 @@ def __ext_euclid(a, b):
 # 주어진 숫자가 소수일 가능성을 체크한다. (밀러-라빈의 소수 판별법 사용)
 # 인자값 : n - 숫자
 # 리턴값 : 0 - 소수 아님, 1 - 소수
-def __mr(n):
+def simple_rsa(n):
     composite = 0  # composite number
     inconclusive = 0  # May be prime number
 
@@ -104,7 +104,7 @@ def __mr(n):
 # 주어진 bit 수에 해당하는 하나의 홀수를 생성한다.
 # 인자값 : gen_bit - 생성할 홀수의 bit 수
 # 리턴값 : 홀수
-def __gen_number(gen_bit):
+def generate_odd(gen_bit):
     random.seed()
 
     b = ''
@@ -118,10 +118,10 @@ def __gen_number(gen_bit):
 # 주어진 bit 수에 해당하는 하나의 소수를 생성한다.
 # 인자값 : gen_bit - 생성할 소수의 bit 수
 # 리턴값 : 소수
-def __gen_prime(gen_bit):
+def generate_prime(gen_bit):
     while 1:
-        p = __gen_number(gen_bit)  # 홀수를 만든다.
-        if __mr(p) == 1:  # 소수일 가능성 체크한다.
+        p = generate_odd(gen_bit)  # 홀수를 만든다.
+        if simple_rsa(p) == 1:  # 소수일 가능성 체크한다.
             return p
 
 # n보다 작고, n과 서로소인 정수 e를 찾는다.
@@ -129,10 +129,10 @@ def __gen_prime(gen_bit):
 # 정수 d를 찾는다.
 # 인자값 : n - 정수
 # 리턴값 : e, d
-def __get_ed(n):
+def get_number(n):
     while 1:
         t = int(random.uniform(2, 1000))
-        d, x, y = __ext_euclid(t, n)
+        d, x, y = euclid(t, n)
         if d == 1:  # 나머지가 1인가?
             return t, x
 
@@ -140,7 +140,7 @@ def __get_ed(n):
 # 숫자를 문자열로 변환한다. 암호화를 쉽게 하기 위해 문자열을 숫자로 바꾼다.
 # 인자값 : val - 숫자
 # 리턴값 : 문자열
-def __value_to_string(val):
+def to_string(val):
     ret = ''
     for i in range(32):
         b = val & 0xff
@@ -155,7 +155,7 @@ def __value_to_string(val):
 # 암호화를 쉽게 하기 위해 문자열을 숫자로 바꾼다.
 # 인자값 : buf - 문자열
 # 리턴값 : 숫자
-def __string_to_value(buf):
+def to_num(buf):
     plantext_ord = 0
     for i in range(len(buf)):
         plantext_ord |= ord(buf[i]) << (i * 8)
@@ -168,29 +168,26 @@ def __string_to_value(buf):
 #         pr_fname - 개인키 파일 이름
 # 리턴값 : 키 생성 성공 여부
 def create_key(pu_fname='key.prk', pr_fname='key.skr', debug=False):
-    p = __gen_prime(128)  # 128bit 소수 생성
-    q = __gen_prime(128)  # 128bit 소수 생성
-
-    # print 'p    :', hex(p)
-    # print 'q    :', hex(q)
+    p = generate_prime(128)  # 128bit 소수 생성
+    q = generate_prime(128)  # 128bit 소수 생성
 
     n = p * q
 
     qn = (p - 1) * (q - 1)
 
-    e, d = __get_ed(qn)
+    e, d = get_number(qn)
 
-    pu = [e, n]  # 공개키
-    pr = [d, n]  # 개인키
+    public_key = [e, n]  # 공개키
+    private_key = [d, n]  # 개인키
 
     # 공개키와 개인키를 base64로 구성한다.
-    pu_data = base64.b64encode(marshal.dumps(pu))
-    pr_data = base64.b64encode(marshal.dumps(pr))
+    public_64 = base64.b64encode(marshal.dumps(public_key))
+    private_64 = base64.b64encode(marshal.dumps(private_key))
 
     try:
         # 공개키와 개인키를 파일로 만든다.
-        open(pu_fname, 'wt').write(pu_data)
-        open(pr_fname, 'wt').write(pr_data)
+        open(pu_fname, 'wt').write(public_64)
+        open(pr_fname, 'wt').write(private_64)
     except IOError:
         return False
 
@@ -204,7 +201,7 @@ def create_key(pu_fname='key.prk', pr_fname='key.skr', debug=False):
 # 주어진 key 파일을 읽어 rsa 키로 변환한다.
 # 인자값 : key_filename - rsa 키 파일
 # 리턴값 : rsa 키
-def read_key(key_filename):
+def to_rsa_key(key_filename):
     try:
         with open(key_filename, 'rt') as fp:
             b = fp.read()
@@ -221,9 +218,9 @@ def read_key(key_filename):
 #         key - rsa 키
 # 리턴값 : 암/복호화된 결과물
 def crypt(buf, key):
-    plantext_ord = __string_to_value(buf)
+    plantext_ord = to_num(buf)
 
     # 주어진 키로 암/복호화
     val = pow(plantext_ord, key[0], key[1])
 
-    return __value_to_string(val)
+    return to_string(val)

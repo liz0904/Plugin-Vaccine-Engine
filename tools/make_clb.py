@@ -16,7 +16,7 @@ import clbfile
 if __name__=='__main__':
     #인자값 체크
     if len(sys.argv)!=2:
-        print("Usage: kmake.py [python source]")
+        print("Usage: make_clb.py [python source]")
         exit(0)
 
     clbfile.make_clb_file(sys.argv[1], True)
