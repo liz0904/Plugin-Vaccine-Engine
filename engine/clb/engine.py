@@ -44,8 +44,6 @@ class Engine:
             print("[*] Cloudbread.clb: ")
             print('     ' + str(self.clbfiles))
 
-
-
         # 우선순위대로 CLB 파일을 로딩한다.
         for clb_name in self.clbfiles:
             clb_path = os.path.join(plugins_path, clb_name)
@@ -125,7 +123,6 @@ class EngineInstance:
         self.set_options()  #기본 옵션 설정
 
         self.main_inst=[]    #모든 플러그인의 Main 인스턴스
-
         self.update_info=[]
 
         self.result={}
@@ -133,7 +130,6 @@ class EngineInstance:
 
     def init(self):
         final_main_inst=[]   #최종 인스턴스 리스트
-        print(len(self.main_inst))  #-------------------------------------------------------------------------------------------
 
         if self.debug:
             print('[*] Main.init(): ')
@@ -150,7 +146,6 @@ class EngineInstance:
                 continue
 
         self.main_inst=final_main_inst    #최종 Main 인스턴스 등록
-
         if len(self.main_inst):
             if self.debug:
                 print('[*] Count of Main.init(): %d' % (len(self.main_inst)))

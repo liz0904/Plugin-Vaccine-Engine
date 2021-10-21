@@ -3,7 +3,7 @@
 import os
 
 # KavMain 클래스
-class KavMain:
+class Main:
     # 플러그인 엔진을 초기화
     # 인력값 : plugins_path - 플러그인 엔진의 위치
     def init(self, plugins_path):  # 플러그인 엔진 초기화

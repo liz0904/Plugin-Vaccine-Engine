@@ -270,16 +270,16 @@ def disinfect_callback(ret_value, action_type):
         disp_name = '%s' % (fs.get_root_filename())
 
     if fs.is_modify():  # 수정 성공?
-        if action_type == clb.k2const.CLB_DISINFECT:
+        if action_type == clb.menu.CLB_DISINFECT:
             message = 'disinfected'
-        elif action_type == clb.k2const.CLB_DELETE:
+        elif action_type == clb.menu.CLB_DELETE:
             message = 'deleted'
 
         message_color = FOREGROUND_GREEN | FOREGROUND_INTENSITY
     else:   #수정 실패
-        if action_type == clb.k2const.CLB_DISINFECT:
+        if action_type == clb.menu.CLB_DISINFECT:
             message = 'disinfection failed'
-        elif action_type == clb.k2const.CLB_DELETE:
+        elif action_type == clb.menu.CLB_DELETE:
             message = 'deletion failed'
 
         message_color = FOREGROUND_RED | FOREGROUND_INTENSITY
@@ -317,7 +317,7 @@ def print_result(result):
 #listvirus의 콜백함수
 def listvirus_callback(plugin_name, vnames):
     for vname in vnames:
-        print('%-50s [%s.kmd]'%(vname, plugin_name))
+        print('%-50s [%s.clb]'%(vname, plugin_name))
 
 # main()
 def main():
@@ -364,7 +364,7 @@ def main():
         return 0
 
     #엔진 버전 출력
-    c=kav.check_Version()
+    c=kav.check_version()
     msg='\rLast Updated %s UTC\n'%c.ctime()
     cprint(msg,FOREGROUND_GREY)
 
