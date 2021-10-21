@@ -360,7 +360,7 @@ def main():
 
     if not kav.init():
         print('')
-        print_error('CloudBread AntiVirus Engine init')
+        print_error('CloudBread AntiVirus Engine init.')
         return 0
 
     #엔진 버전 출력
