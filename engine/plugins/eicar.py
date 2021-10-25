@@ -29,7 +29,7 @@ class CLBMain:
     #         filename    - 파일 이름
     # 리턴값 : (악성코드 발견 여부, 악성코드 이름, 악성코드 ID) 등등
     # ---------------------------------------------------------------------
-    def scan(self, filehandle, filename):  # 악성코드 검사
+    def detect(self, filehandle, filename):  # 악성코드 검사
         try:
             fh = filehandle
 

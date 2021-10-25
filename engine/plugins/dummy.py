@@ -25,7 +25,7 @@ class CLBMain:
     # 악성코드를 검사한다.
     # 입력값 : filehandle  - 파일 핸들
     #         filename    - 파일 이름
-    def scan(self, filehandle, filename):
+    def detect(self, filehandle, filename):
         try:
             fp = open(filename)
             buf = fp.read(len(self.pattern))  # 패턴은 49 Byte 크기

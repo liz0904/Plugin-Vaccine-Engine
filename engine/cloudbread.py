@@ -393,7 +393,7 @@ def main():
                 scan_path=os.path.abspath(scan_path)
 
                 if os.path.exists(scan_path):   #폴더나 파일이 존재하는가?
-                    kav.scan(scan_path, scan_callback)
+                    kav.detect(scan_path, scan_callback)
                 else:
                     print_error('Invalid path: \'%s\''%scan_path)
 

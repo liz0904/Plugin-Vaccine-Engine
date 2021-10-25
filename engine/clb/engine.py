@@ -269,7 +269,7 @@ class EngineInstance:
     #          callback - 검사 시 출력 화면 관련 콜백 함수
     # 리턴값 : 0 - 성공
     #          1 - Ctrl+C를 이용해서 악성코드 검사 강제 종료
-    def scan(self, filename, *callback):        #---------------------------------------이거 시발 왜 함수명 바꾸면 지랄이야------------
+    def detect(self, filename, *callback):        #---------------------------------------이거 시발 왜 함수명 바꾸면 지랄이야------------
         self.rezip_info=[]
         detect_callback=None   #악성코드 검사 콜백 함수
         treat_callback=None  #악성코드 치료 콜백 함수
@@ -412,7 +412,7 @@ class EngineInstance:
 
             for i,inst in enumerate(self.clbmain_instance):
                 try:
-                    bool_detect,virus, virus_id=inst.scan(mm, file)
+                    bool_detect,virus, virus_id=inst.detect(mm, file)
                     if bool_detect: #악성코드를 발견하면 추가 악성코드 검사를 중단
                         engine_id=i   #악성코드를 발견한 플러그인 엔진 ID
 
