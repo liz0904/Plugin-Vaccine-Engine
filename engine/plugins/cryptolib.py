@@ -25,7 +25,7 @@ class CLBMain:
 
         info['author'] = 'Cloudbread'  # 제작자
         info['version'] = '1.0'  # 버전
-        info['title'] = 'Crypto Library'  # 엔진 설명
-        info['kmd_name'] = 'cryptolib'  # 엔진 파일 이름
+        info['engine_info'] = 'Crypto Library'  # 엔진 설명
+        info['engine_name'] = 'cryptolib'  # 엔진 파일 이름
 
         return info

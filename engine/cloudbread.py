@@ -376,7 +376,7 @@ def main():
     cprint(msg,FOREGROUND_GREY)
 
     #진단/치료 가능한 악성코드 수 출력
-    msg='Signature number: %d\n\n'%kav.get_signum()
+    msg='Signature number: %d\n\n'%kav.get_virus_num()
     cprint(msg, FOREGROUND_GREY)
 
     kav.set_options(options)    #옵션 설정
@@ -386,7 +386,7 @@ def main():
         kav.having_virus_list(listvirus_callback)
     else:
         if args:
-            kav.set_result()    #악성코드 검사 결과를 초기화
+            kav.set_final_detect()    #악성코드 검사 결과를 초기화
 
             #검사용 path
             for scan_path in args:

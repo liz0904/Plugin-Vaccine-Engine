@@ -72,8 +72,8 @@ class CLBMain:
 
         info['author'] = 'Cloudbread'  # 제작자
         info['version'] = '0,0'  # 버전
-        info['title'] = 'EICAR Scan Engine'  # 엔진 설명
-        info['kmd_name'] = 'eicar'  # 엔진 파일 이름
-        info['sig_num'] = 1  # 진단/치료 가능한 악성코드 수
+        info['engine_info'] = 'EICAR Scan Engine'  # 엔진 설명
+        info['engine_name'] = 'eicar'  # 엔진 파일 이름
+        info['virus_num'] = 1  # 진단/치료 가능한 악성코드 수
 
         return info

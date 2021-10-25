@@ -14,16 +14,6 @@ class CLBMain:
     def uninit(self):
         return 0  # 플러그인 엔진 종료 성공
 
-    # 플러그인 엔진의 주요 정보
-    def getinfo(self):
-        info = dict()
-        info['author'] = 'Cloudbread'  # 제작자
-        info['version'] = '0.0'  # 버전
-        info['title'] = 'zip Scan Engine'  # 엔진 설명
-        info['kmd_name'] = 'zip-virus'  # 엔진 파일 이름
-        info['sig_num'] = 1  # 진단/치료 가능한 악성코드 수
-        return info
-
     #파일 포멧 분석
     def format(self, filehandle, filename):
         fileformat={}
@@ -77,5 +67,15 @@ class CLBMain:
             zf.close()
             return True
         return False
+
+    # 플러그인 엔진의 주요 정보
+    def getinfo(self):
+        info = dict()
+        info['author'] = 'Cloudbread'  # 제작자
+        info['version'] = '0.0'  # 버전
+        info['engine_info'] = 'zip Scan Engine'  # 엔진 설명
+        info['engine_name'] = 'zip'  # 엔진 파일 이름
+        info['virus_num'] = 1  # 진단/치료 가능한 악성코드 수
+        return info
 
 
