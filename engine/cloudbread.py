@@ -179,7 +179,7 @@ def define_options():
 
 #사용법
 def print_usage():
-    print('\nUsage: k2.py path[s] [options]')
+    print('\nUsage: cloudbread.py path[s] [options]')
 
 # 백신 옵션을 분석
 def parser_options():
