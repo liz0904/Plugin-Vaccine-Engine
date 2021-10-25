@@ -216,10 +216,10 @@ def print_options():
     print(options_string)
 
 # scan의 콜백 함수
-def scan_callback(ret_value):
+def scan_callback(detect_result):
     global g_options
 
-    fs=ret_value['file_struct']
+    fs=detect_result['file_struct']
 
     if len(fs.get_zip_structure_file()) !=0:
         disp_name = '%s (%s)' % (fs.root_file(),
@@ -227,10 +227,10 @@ def scan_callback(ret_value):
     else:
         disp_name='%s'%(fs.root_file())
 
-    if ret_value['bool_detect']:
+    if detect_result['bool_detect']:
         state = 'infected'
 
-        vname = ret_value['virus']
+        vname = detect_result['virus']
         message = '%s : %s' %(state, vname)
         message_color = FOREGROUND_RED |FOREGROUND_INTENSITY
     else:
@@ -240,7 +240,7 @@ def scan_callback(ret_value):
     display_line(disp_name, message, message_color)
 
     if g_options.opt_prompt:     #프롬프트 옵션이 설정되었는가?
-        while True and ret_value['bool_detect']:
+        while True and detect_result['bool_detect']:
             cprint('Disinfect/Delete/Ignore/Quie? (d/l/i/q):', FOREGROUND_CYAN |FOREGROUND_INTENSITY)
             ch=getch().lower()
             print ch
@@ -264,8 +264,8 @@ def scan_callback(ret_value):
 
 
 # disifect의 콜백 함수
-def disinfect_callback(ret_value, action_type):
-    fs = ret_value['file_struct']
+def disinfect_callback(detect_result, action_type):
+    fs = detect_result['file_struct']
     message = ''
 
     if len(fs.get_zip_structure_file()) != 0:
