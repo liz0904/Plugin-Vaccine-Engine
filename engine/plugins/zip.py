@@ -15,7 +15,7 @@ class CLBMain:
         return 0  # 플러그인 엔진 종료 성공
 
     #파일 포멧 분석
-    def format(self, filehandle, filename):
+    def analyze_file_format(self, filehandle, filename):
         fileformat={}
         a=filehandle
         if a[0:4]=='PK\x03\x04':    #파일 헤더 체크

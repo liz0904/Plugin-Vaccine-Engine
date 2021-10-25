@@ -125,9 +125,9 @@ class EngineInstance:
         self.options={} #옵션
         self.set_options()  #기본 옵션 설정
 
-        self.clbmain_instance=[]    #모든 플러그인의 KaVMain 인스턴스
+        self.clbmain_instance=[]    #모든 플러그인의 CLBMain 인스턴스
 
-        self.update_info=[]
+        self.rezip_info=[]
 
         self.final_detect={}
         self.identified_virus=set() #유니크한 악성코드 개수를 구하기 위해 사용
@@ -270,7 +270,7 @@ class EngineInstance:
     # 리턴값 : 0 - 성공
     #          1 - Ctrl+C를 이용해서 악성코드 검사 강제 종료
     def scan(self, filename, *callback):        #---------------------------------------이거 시발 왜 함수명 바꾸면 지랄이야------------
-        self.update_info=[]
+        self.rezip_info=[]
         detect_callback=None   #악성코드 검사 콜백 함수
         treat_callback=None  #악성코드 치료 콜백 함수
         done_callback=None #악성코드 압축 최종 치료 콜백 함수
@@ -344,7 +344,7 @@ class EngineInstance:
                         file_list=unzip_file #압축 결과물이 존재하면 파일정보 교체
 
                     #2. 포맷 분석
-                    file_format=self.format(file_list)
+                    file_format=self.analyze_file_format(file_list)
 
                     #파일로 악성코드 검사
                     unzip_file, virus, virus_id, engine_id=self.detect_zip_file(file_list, file_format)
@@ -367,7 +367,7 @@ class EngineInstance:
 
                         if action_type == menu.MENU_QUIT:  #종료할거임?
                             return 0
-                        self.__disinfect_process(detect_result, treat_callback, action_type)
+                        self.delete(detect_result, treat_callback, action_type)
                     else:
                         if self.options['opt_list']:  # 모든 리스트 출력인가?
                             if isinstance(detect_callback, types.FunctionType):
@@ -378,16 +378,16 @@ class EngineInstance:
                                     detect_callback(detect_result)
 
                       #압축 파일 최종 치료 정리
-                    self.__update_process(file_list, done_callback)
+                    self.rezip(file_list, done_callback)
 
                     if not unzip_file:
-                        zip_file_list=self.arclist(file_list, file_format)
+                        zip_file_list=self.zip_file_list(file_list, file_format)
                         if len(zip_file_list):
                             file_detect_list= zip_file_list + file_detect_list
             except KeyboardInterrupt:
                 return 1    #키보드 종료
 
-        self.__update_process(None, done_callback, True)   #최종 파일 정리
+        self.rezip(None, done_callback, True)   #최종 파일 정리
 
         return 0    #정상적으로 검사 종료
 
@@ -488,89 +488,89 @@ class EngineInstance:
 
     #플러그인 엔진에게 압축 해제 요청
     def unzip(self, file_struct):
-        rname_struct=None
+        tmp_file_struct=None
 
         try:
             if file_struct.bool_zip():
-                arc_engine_id=file_struct.get_zip_engine_id()
+                zip_engine_id=file_struct.get_zip_engine_id()
 
-                arc_name=file_struct.get_zip_file()
-                name_in_arc=file_struct.get_zipped_file()
+                zip_file_name=file_struct.get_zip_file()
+                zipped_file_name=file_struct.get_zipped_file()
 
-                for inst in self.clbmain_instance:
+                for i in self.clbmain_instance:
                     try:
-                        unpack_data=inst.unzip(arc_engine_id, arc_name, name_in_arc)
+                        unzip_body=i.unzip(zip_engine_id, zip_file_name, zipped_file_name)
 
-                        if unpack_data:
-                            rname=tempfile.mktemp(prefix='ktmp')
-                            fp=open(rname, 'wb')
-                            fp.write(unpack_data)
+                        if unzip_body:
+                            file=tempfile.mktemp(prefix='ktmp')
+                            fp=open(file, 'wb')
+                            fp.write(unzip_body)
                             fp.close()
 
-                            rname_struct=file_struct
-                            rname_struct.set_target_file(rname)
+                            tmp_file_struct=file_struct
+                            tmp_file_struct.set_target_file(file)
 
                     except AttributeError:
                         continue
-                return rname_struct
+                return tmp_file_struct
         except IOError:
             pass
         return None
 
     #플러그인 엔진에게 압축파일의 내부 리스트를 요청
-    def arclist(self, file_struct, fileformat):
-        arc_list=[]
-        file_scan_list=[]
+    def zip_file_list(self, file_struct, fileformat):
+        zip_file_list=[]
+        file_detect_list=[]
 
-        rname=file_struct.get_target_file()
+        target_file=file_struct.get_target_file()
         deep_name=file_struct.get_zip_structure_file()
-        mname=file_struct.root_file()
+        root_file=file_struct.root_file()
         level=file_struct.get_level()
 
         #압축 엔진 모듈의 arclist 멤버 함수 호출
-        for inst in self.clbmain_instance:
+        for i in self.clbmain_instance:
 
             try:
                 if self.options['opt_arc']:
-                    arc_list=inst.zip_struct_list(rname, fileformat)
+                    zip_file_list=i.zip_struct_list(target_file, fileformat)
 
-                if len(arc_list):   #압축 목록이 존재한다면 추가하고 종료
-                    for alist in arc_list:
-                        arc_id=alist[0] #항상 압축 엔진 ID가 들어옴
-                        name=alist[1]   #압축 파일의 내부 파일 이름
+                if len(zip_file_list):   #압축 목록이 존재한다면 추가하고 종료
+                    for j in zip_file_list:
+                        zip_engine_id=j[0] #항상 압축 엔진 ID가 들어옴
+                        zip_file_deep=j[1]   #압축 파일의 내부 파일 이름
 
                         if len (deep_name): #압축 파일 내부 표시용
-                            dname='%s/%s' %(deep_name, name)
+                            deep_name='%s/%s' %(deep_name, zip_file_deep)
                         else:
-                            dname='%s' %name
+                            deep_name='%s' %zip_file_deep
 
                         fs=file.FileStruct()
                         #기존 level보다 1증가시켜 압축 깊이가 깊어짐을 표시
-                        fs.set_archive(arc_id, rname, name, dname, mname, False, False, level+1)
-                        file_scan_list.append(fs)
+                        fs.set_archive(zip_engine_id, target_file, zip_file_deep, deep_name, root_file, False, False, level+1)
+                        file_detect_list.append(fs)
 
                     self.final_detect['ZIP_Files']+=1
                     break
             except AttributeError:
                 continue
 
-        return file_scan_list
+        return file_detect_list
 
     #플러그인 엔진에게 파일 포맷 분석을 요청
-    def format(self, file_struct):
-        ret={}
-        filename=file_struct.get_target_file()
+    def analyze_file_format(self, file_struct):
+        result={}
+        file=file_struct.get_target_file()
 
         try:
-            fp=open(filename, 'rb')
+            fp=open(file, 'rb')
             mm=mmap.mmap(fp.fileno(), 0, access=mmap.ACCESS_READ)
 
             #엔진 모듈의 format 멤버 함수 호출
-            for inst in self.clbmain_instance:
+            for i in self.clbmain_instance:
                 try:
-                    ff=inst.format(mm, filename)
-                    if ff:
-                        ret.update(ff)
+                    file_format=i.analyze_file_format(mm, file)
+                    if file_format:
+                        result.update(file_format)
                 except AttributeError:
                     pass
             mm.close()
@@ -578,124 +578,124 @@ class EngineInstance:
         except IOError:
             pass
 
-        return ret
+        return result
 
     #악성코드를 치료
-    def __disinfect_process(self, ret_value, disinfect_callback_fn, action_type):
+    def delete(self, detect_result, delete_callback, action_type):
         if action_type==menu.MENU_IGNORE:   #치료 무시
             return
 
-        t_file_info=ret_value['file_struct']    #검사 파일 정보
-        mid=ret_value['virus_id']   #악성코드 ID
-        eid=ret_value['engine_id']  #악성코드를 진단한 엔진 ID
+        file_struct=detect_result['file_struct']    #검사 파일 정보
+        virus_id=detect_result['virus_id']   #악성코드 ID
+        engine_id=detect_result['engine_id']  #악성코드를 진단한 엔진 ID
 
-        d_fname=t_file_info.get_target_file()
-        d_ret=False
+        target_file=file_struct.get_target_file()
+        bool_delete=False
 
         if action_type==menu.MENU_DISINFECT:    #치료 옵션이 설정됐나?
-            d_ret=self.treat(d_fname, mid, eid)
-            if d_ret:
+            bool_delete=self.treat(target_file, virus_id, engine_id)
+            if bool_delete:
                 self.final_detect['Treated_Files'] +=1    #치료 파일 수
         elif action_type==menu.MENU_DELETE:     #삭제 옵션이 설정 됐나?
             try:
-                os.remove(d_fname)
-                d_ret=True
+                os.remove(target_file)
+                bool_delete=True
                 self.final_detect['Deleted_files'] +=1        #삭제 파일 수
             except IOError:
-                d_ret=False
+                bool_delete=False
 
-        t_file_info.set_bool_modified(d_ret)   #치료(수정/삭제) 여부 표시
+        file_struct.set_bool_modified(bool_delete)   #치료(수정/삭제) 여부 표시
 
-        if isinstance(disinfect_callback_fn, types.FunctionType):
-            disinfect_callback_fn(ret_value, action_type)
+        if isinstance(delete_callback, types.FunctionType):
+            delete_callback(detect_result, action_type)
 
 
     # update_info 내부의 압축을 처리
     # 입력값 : p_file_info - update_info의 마지막 파일 정보 구조체
     # 리턴값 : 갱신된 파일 정보 구조체
-    def __update_arc_file_struct(self, p_file_info):
+    def rezip_deep(self, file):
         # 실제 압축 파일 이름이 같은 파일을 모두 추출한다.
-        t = []
+        ranking = []
 
-        arc_level = p_file_info.get_level()
+        level = file.get_level()
 
-        while len(self.update_info):
-            if self.update_info[-1].get_level() == arc_level:
-                t.append(self.update_info.pop())
+        while len(self.rezip_info):
+            if self.rezip_info[-1].get_level() == level:
+                ranking.append(self.rezip_info.pop())
             else:
                 break
 
-        t.reverse()  # 순위를 바꾼다.
+        ranking.reverse()  # 순위를 바꾼다.
 
         # 리턴값이 될 파일 정보 (압축 파일의 최상위 파일)
-        ret_file_info = self.update_info.pop()
+        rezip_info_result = self.rezip_info.pop()
 
         # 업데이트 대상 파일들이 수정 여부를 체크한다
-        b_update = False
+        bool_modify = False
 
-        for finfo in t:
-            if finfo.bool_modified():
-                b_update = True
+        for i in ranking:
+            if i.bool_modified():
+                bool_modify = True
                 break
 
-        if b_update:  # 수정된 파일이 존재한다면 재압축 진행
-            arc_name = t[0].get_zip_file()
-            arc_engine_id = t[0].get_zip_engine_id()
+        if bool_modify:  # 수정된 파일이 존재한다면 재압축 진행
+            zip_file = ranking[0].get_zip_file()
+            zip_engine_id = ranking[0].get_zip_engine_id()
 
-            for inst in self.clbmain_instance:
+            for i in self.clbmain_instance:
                 try:
-                    ret=inst.bool_rezip(arc_engine_id, arc_name, t)
-                    if ret: #최종 압축 성공
+                    bool_rezip=i.bool_rezip(zip_engine_id, zip_file, ranking)
+                    if bool_rezip: #최종 압축 성공
                         break
                 except AttributeError:
                     continue
-            ret_file_info.set_bool_modified(True)  #수정 여부 표시
+            rezip_info_result.set_bool_modified(True)  #수정 여부 표시
 
         #압축된 파일들 모두 삭제
-        for tmp in t:
-            t_fname=tmp.get_target_file()
+        for i in ranking:
+            target_file=i.get_target_file()
             #플러그인 엔진에 의해 파일이 치료(삭제)됐을 수 있다
-            if os.path.exists(t_fname):
-                os.remove(t_fname)
+            if os.path.exists(target_file):
+                os.remove(target_file)
 
-        return ret_file_info
+        return rezip_info_result
 
 
     # update_info를 갱신
     # 입력값 : file_struct        - 파일 정보 구조체
     #          immediately_flag   - update_info 모든 정보 갱신 여부
-    def __update_process(self, file_struct, update_callback_fn, immediately_flag=False):
+    def rezip(self, file_struct, rezip_callback, all_rezip=False):
         # 압축 파일 정보의 재압축을 즉시하지 않고 내부 구성을 확인하여 처리한다.
-        if immediately_flag is False:
-            if len(self.update_info) == 0:  # 아무런 파일이 없으면 추가
-                self.update_info.append(file_struct)
+        if all_rezip is False:
+            if len(self.rezip_info) == 0:  # 아무런 파일이 없으면 추가
+                self.rezip_info.append(file_struct)
             else:
-                n_file_info = file_struct  # 현재 작업 파일 정보
-                p_file_info = self.update_info[-1]  # 직전 파일 정보
+                now_file = file_struct  # 현재 작업 파일 정보
+                last_file = self.rezip_info[-1]  # 직전 파일 정보
 
                 # 마스터 파일이 같은가? (압축 엔진이 있을때만 유효)
-                if p_file_info.root_file() == n_file_info.root_file():
-                    if p_file_info.get_level() <= n_file_info.get_level():
+                if last_file.root_file() == now_file.root_file():
+                    if last_file.get_level() <= now_file.get_level():
                         # 마스터 파일이 같고 계속 압축 깊이가 깊어지면 계속 누적
-                        self.update_info.append(n_file_info)
+                        self.rezip_info.append(now_file)
                     else:
-                        ret_file_info = self.__update_arc_file_struct(p_file_info)
-                        self.update_info.append(ret_file_info)  # 결과 파일 추가
-                        self.update_info.append(n_file_info)  # 다음 파일 추가
+                        result_file = self.rezip_deep(last_file)
+                        self.rezip_info.append(result_file)  # 결과 파일 추가
+                        self.rezip_info.append(now_file)  # 다음 파일 추가
                 else:
                     #새로운 파일이 시작되므로 self.update_info 내부 모두 정리
-                    immediately_flag = True
+                    all_rezip = True
 
         # 압축 파일 정보를 이용해 즉시 압축하여 최종 마스터 파일로 재조립한다.
-        if immediately_flag and len(self.update_info) >1:
-            ret_file_info=None
+        if all_rezip and len(self.rezip_info) >1:
+            result_file=None
 
-            while len(self.update_info):
-                p_file_info = self.update_info[-1]  # 직전 파일 정보
-                ret_file_info = self.__update_arc_file_struct(p_file_info)
+            while len(self.rezip_info):
+                last_file = self.rezip_info[-1]  # 직전 파일 정보
+                result_file = self.rezip_deep(last_file)
 
-                if len(self.update_info):  # 최상위 파일이 아니면 하위 결과 추가
-                    self.update_info.append(ret_file_info)
+                if len(self.rezip_info):  # 최상위 파일이 아니면 하위 결과 추가
+                    self.rezip_info.append(result_file)
 
-            if isinstance(update_callback_fn, types.FunctionType) and ret_file_info:
-                update_callback_fn(ret_file_info)
+            if isinstance(rezip_callback, types.FunctionType) and result_file:
+                rezip_callback(result_file)
