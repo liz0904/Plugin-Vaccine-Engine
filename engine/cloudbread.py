@@ -9,11 +9,11 @@ import clb.engine
 from ctypes import windll, Structure, c_short, c_ushort,  byref
 
 # 주요 상수
-KAV_VERSION = '0.01'
-KAV_BUILDDATE = 'Sep 20 2021'
-KAV_LASTYEAR = KAV_BUILDDATE[len(KAV_BUILDDATE)-4:]
+VERSION = '0.01'
+BUILD_DATE = 'Sep 20 2021'
+YEAR = BUILD_DATE[len(BUILD_DATE) - 4:]
 
-g_options = None  # 옵션
+gui_options = None  # 옵션
 
 
 # 콘솔에 색깔 출력을 위한 클래스 및 함수들
@@ -26,8 +26,6 @@ FOREGROUND_MAGENTA = 0x0005
 FOREGROUND_YELLOW = 0x0006
 FOREGROUND_GREY = 0x0007
 FOREGROUND_INTENSITY = 0x0008  # foreground color is intensified.
-
-from ctypes import windll, Structure, c_short, c_ushort, byref
 
 SHORT = c_short
 WORD = c_ushort
@@ -117,13 +115,13 @@ def display_line(filename, message, message_color):
 # print_k2logo()
 # 백신 로고를 출력한다
 # -------------------------------------------------------------------------
-def print_k2logo():
+def logo():
     logo = '''CloudBread Anti-Virus I (for %s) Ver %s (%s)
-Copyright (C) 2021-%s CloudBread. All rights reserved.
+    Copyright (C) 2021-%s CloudBread. All rights reserved.
 '''
 
     print('------------------------------------------------------------')
-    s = logo % (sys.platform.upper(), KAV_VERSION, KAV_BUILDDATE, KAV_LASTYEAR)
+    s = logo % (sys.platform.upper(), VERSION, BUILD_DATE, YEAR)
     cprint(s, FOREGROUND_CYAN | FOREGROUND_INTENSITY)
     print('------------------------------------------------------------')
 
@@ -216,8 +214,8 @@ def print_options():
     print(options_string)
 
 # scan의 콜백 함수
-def scan_callback(detect_result):
-    global g_options
+def detect_callback(detect_result):
+    global gui_options
 
     fs=detect_result['file_struct']
 
@@ -239,7 +237,7 @@ def scan_callback(detect_result):
 
     display_line(disp_name, message, message_color)
 
-    if g_options.opt_prompt:     #프롬프트 옵션이 설정되었는가?
+    if gui_options.opt_prompt:     #프롬프트 옵션이 설정되었는가?
         while True and detect_result['bool_detect']:
             cprint('Disinfect/Delete/Ignore/Quie? (d/l/i/q):', FOREGROUND_CYAN |FOREGROUND_INTENSITY)
             ch=getch().lower()
@@ -253,9 +251,9 @@ def scan_callback(detect_result):
                 return clb.menu.MENU_IGNORE     #악성코드 치료 무시
             elif ch == 'q':
                 return clb.menu.MENU_QUIT
-    elif g_options.opt_dis:  # 치료 옵션
+    elif gui_options.opt_dis:  # 치료 옵션
         return clb.menu.MENU_DISINFECT
-    elif g_options.opt_del:  # 삭제 옵션
+    elif gui_options.opt_del:  # 삭제 옵션
         return clb.menu.MENU_DELETE
 
     return clb.menu.MENU_IGNORE #default 값: 악성코드 치료 무시
@@ -264,7 +262,7 @@ def scan_callback(detect_result):
 
 
 # disifect의 콜백 함수
-def disinfect_callback(detect_result, action_type):
+def treat_callback(detect_result, action_type):
     fs = detect_result['file_struct']
     message = ''
 
@@ -293,11 +291,11 @@ def disinfect_callback(detect_result, action_type):
 # -------------------------------------------------------------------------
 # update의 콜백 함수
 # -------------------------------------------------------------------------
-def update_callback(ret_file_info):
+def delete_callback(ret_file_info):
     if ret_file_info.bool_modified():  # 수정되었다면 결과 출력
         disp_name = ret_file_info.get_target_file()
 
-        message = 'updated'
+        message = 'delete'
         message_color = FOREGROUND_GREEN | FOREGROUND_INTENSITY
 
         display_line(disp_name, message, message_color)
@@ -308,15 +306,14 @@ def update_callback(ret_file_info):
 # 악성코드 검사 결과를 출력한다.
 # 입력값 : result - 악성코드 검사 결과
 def print_result(result):
-
     print
     print
 
     cprint('Results:\n', FOREGROUND_GREY | FOREGROUND_INTENSITY)
     cprint('Folders           :%d\n' % result['Folders'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
     cprint('Files             :%d\n' % result['Files'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
-    cprint('Infected files    :%d\n' % result['Detected_Files'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
-    cprint('Identified viruses:%d\n' % result['Detected_Viruses'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
+    cprint('Detect_Files      :%d\n' % result['Detected_Files'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
+    cprint('Detect_Viruses    :%d\n' % result['Detected_Viruses'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
     cprint('I/O errors        :%d\n' % result['IO_errors'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
 
     print
@@ -328,12 +325,12 @@ def listvirus_callback(plugin_name, vnames):
 
 # main()
 def main():
-    global g_options
+    global gui_options
 
     options, args = parser_options()    #옵션 분석
-    g_options=options   #global options 지정
+    gui_options=options   #global options 지정
 
-    print_k2logo()  #로고 출력
+    logo()  #로고 출력
 
     # 잘못된 옵션인가?
     if options == 'NONE_OPTION':  # 옵션이 없는 경우
@@ -352,56 +349,56 @@ def main():
         return 0
 
     #백신 엔진 구동
-    k2=clb.engine.Engine()    #엔진 클래스
-    if not k2.set_plugins('plugins'):   #플러그인 엔진 설정
+    clb_engine_cls=clb.engine.Engine()    #엔진 클래스
+    if not clb_engine_cls.set_plugins('plugins'):   #플러그인 엔진 설정
         print('')
         print_error('CloudBread AntiVirus Engine set_plugins')
         return 0
 
-    kav=k2.create_engine_instance()    #백신 엔진 인스턴스 생성
+    clb_engine_inst=clb_engine_cls.create_engine_instance()    #백신 엔진 인스턴스 생성
 
-    if not kav:
+    if not clb_engine_inst:
         print('')
         print_error('CloudBread AntiVirus Engine create_instance')
         return 0
 
-    if not kav.init():
+    if not clb_engine_inst.init():
         print('')
         print_error('CloudBread AntiVirus Engine init')
         return 0
 
     #엔진 버전 출력
-    c=kav.get_version()
-    msg='\rLast Updated %s UTC\n'%c.ctime()
+    engine_version=clb_engine_inst.get_version()
+    msg='\rLast Updated %s UTC\n'%engine_version.ctime()
     cprint(msg,FOREGROUND_GREY)
 
     #진단/치료 가능한 악성코드 수 출력
-    msg='Signature number: %d\n\n'%kav.get_virus_num()
+    msg='Signature number: %d\n\n'%clb_engine_inst.get_virus_num()
     cprint(msg, FOREGROUND_GREY)
 
-    kav.set_options(options)    #옵션 설정
+    clb_engine_inst.set_options(options)    #옵션 설정
 
     # 악성코드 목록 출력
     if options.opt_vlist is True:
-        kav.having_virus_list(listvirus_callback)
+        clb_engine_inst.having_virus_list(listvirus_callback)
     else:
         if args:
-            kav.set_final_detect()    #악성코드 검사 결과를 초기화
+            clb_engine_inst.set_final_detect()    #악성코드 검사 결과를 초기화
 
             #검사용 path
             for scan_path in args:
                 scan_path=os.path.abspath(scan_path)
 
                 if os.path.exists(scan_path):   #폴더나 파일이 존재하는가?
-                    kav.detect(scan_path, scan_callback)
+                    clb_engine_inst.detect(scan_path, detect_callback)
                 else:
                     print_error('Invalid path: \'%s\''%scan_path)
 
             #악성코드 검사 결과 출력
-            ret=kav.get_result()
+            ret=clb_engine_inst.get_result()
             print_result(ret)
 
-    kav.uninit()
+    clb_engine_inst.uninit()
 
 
 if __name__=='__main__':

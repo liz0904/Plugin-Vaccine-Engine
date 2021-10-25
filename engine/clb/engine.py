@@ -452,7 +452,7 @@ class EngineInstance:
             bool_treat = instance.disinfect(file, virus_id)
 
             if self.debug:
-                print('    [-] %s.disinfect() : %s' % (instance.__module__, bool_treat))
+                print('    [-] %s.treat() : %s' % (instance.__module__, bool_treat))
         except AttributeError:
             pass
 
