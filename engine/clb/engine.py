@@ -47,7 +47,7 @@ class Engine:
             print('     ' + str(self.clb_files))
 
 
-        # 우선순위대로 KMD 파일을 로딩한다.
+        # 우선순위대로 CLB 파일을 로딩한다.
         for clb_file in self.clb_files:
             clb_path = os.path.join(plugins_path, clb_file)
             decrypt_all=clbfile.CLB(clb_path, public_key)   #모든 kmd 파일을 복호화
@@ -196,17 +196,17 @@ class EngineInstance:
     def set_result(self):
         self.result['Folders'] = 0  # 폴더 수
         self.result['Files'] = 0  # 파일 수
-        self.result['Packed'] = 0  # 압축 파일 수
-        self.result['Infected_files'] = 0  # 발견된 전체 악성코드 수 (감염)
-        self.result['Identified_viruses'] = 0  # 발견된 유니크한 악성코드 수
-        self.result['Disinfected_files'] = 0  # 치료한 파일 수
-        self.result['Deleted_files'] = 0  # 삭제한 파일 수
+        self.result['ZIP_Files'] = 0  # 압축 파일 수
+        self.result['Detected_Files'] = 0  # 발견된 전체 악성코드 수 (감염)
+        self.result['Detected_Viruses'] = 0  # 발견된 유니크한 악성코드 수
+        self.result['Treated_Files'] = 0  # 치료한 파일 수
+        self.result['Deleted_Files'] = 0  # 삭제한 파일 수
         self.result['IO_errors'] = 0  # 파일 I/O 에러 발생 수
 
     # 백신 엔진의 악성코드 검사 결과
     def get_result(self):
         # 지금까지 발견한 유티크한 악성코드의 수를 카운트
-        self.result['Identified_viruses'] = len(self.identified_virus)
+        self.result['Detected_Viruses'] = len(self.identified_virus)
         return self.result
 
 
@@ -259,11 +259,11 @@ class EngineInstance:
 
         if len(self.clbmain_instance):  # KavMain 인스턴스가 하나라도 있으면 성공
             if self.debug:
-                print('[*] Count of KavMain : %d' % (len(self.clbmain_instance)))
+                print('[*] Count of CLBMain : %d' % (len(self.clbmain_instance)))
             return True
         else:
             return False
-#--------------------------------------------------------------------------------------여기서부터도 안고침-------------------------------------------------------------------
+
     # 플러그인 엔진에게 악성코드 검사를 요청
     # 입력값 : filename - 악성코 검사 대상 파일 또는 폴더 이름
     #          callback - 검사 시 출력 화면 관련 콜백 함수
@@ -271,23 +271,23 @@ class EngineInstance:
     #          1 - Ctrl+C를 이용해서 악성코드 검사 강제 종료
     def scan(self, filename, *callback):
         self.update_info=[]
-        scan_callback_fn=None   #악성코드 검사 콜백 함수
-        disinfect_callback_fn=None  #악성코드 치료 콜백 함수
-        update_callback_fn=None #악성코드 압축 최종 치료 콜백 함수
+        detect_callback=None   #악성코드 검사 콜백 함수
+        treat_callback=None  #악성코드 치료 콜백 함수
+        done_callback=None #악성코드 압축 최종 치료 콜백 함수
 
         # 악성코드 검사 결과
         ret_value = {
-            'filename': '',  # 파일 이름
-            'result': False,  # 악성코드 발견 여부
-            'virus_name': '',  # 발견된 악성코드 이름
+            'file': '',  # 파일 이름
+            'bool_detect': False,  # 악성코드 발견 여부
+            'virus': '',  # 발견된 악성코드 이름
             'virus_id': -1,  # 악성코드 ID
             'engine_id': -1  # 악성코드를 발견한 플러그인 엔진 ID
         }
 
         try:  # 콜백 함수 저장
-            scan_callback_fn = callback[0]
-            disinfect_callback_fn = callback[1]
-            update_callback_fn = callback[2]
+            detect_callback = callback[0]
+            treat_callback = callback[1]
+            done_callback = callback[2]
         except IndexError:
             pass
 
@@ -314,15 +314,15 @@ class EngineInstance:
                         real_name=real_name[:-1]
 
                     # 콜백 호출 또는 검사 리턴값 생성
-                    ret_value['result'] = False  # 폴더이므로 악성코드 없음
-                    ret_value['filename'] = real_name  # 검사 파일 이름
+                    ret_value['bool_detect'] = False  # 폴더이므로 악성코드 없음
+                    ret_value['file'] = real_name  # 검사 파일 이름
                     ret_value['file_struct'] = t_file_info  # 검사 파일 이름
 
                     self.result['Folders'] += 1   #폴더 개수 카운트
 
                     if self.options['opt_list']:  # 옵션 내용 중 모든 리스트 출력인가?
                         if isinstance(cb_fn, types.FunctionType):   #콜백함수 존재?
-                            scan_callback_fn(ret_value)    #콜백함수 호출
+                            detect_callback(ret_value)    #콜백함수 호출
 
                     #폴더 안의 파일들을 검사 대상 리스트에 추가
                     flist=glob.glob(real_name+os.sep+'*')
@@ -350,35 +350,35 @@ class EngineInstance:
                     ret, vname, mid, eid=self.__scan_file(t_file_info, ff)
 
                     if ret: #악성코드 진단 개수 카운트
-                        self.result['Infected_files']+=1
+                        self.result['Detected_Viruses']+=1
                         self.identified_virus.update([vname])
 
 
                     #콜백 호출 또는 검사 리턴값 생성
-                    ret_value['result'] = ret  # 악성코드 발견 여부
+                    ret_value['bool_detect'] = ret  # 악성코드 발견 여부
                     ret_value['engine_id'] = eid  # 엔진 ID
-                    ret_value['virus_name'] = vname  # 에러 메시지로 대체
+                    ret_value['virus'] = vname  # 에러 메시지로 대체
                     ret_value['virus_id'] = mid  # 악성코드 ID
                     ret_value['file_struct']=t_file_info #검사 파일 이름
 
-                    if ret_value['result']: #악성코드가 발견 됐다?!
-                        if isinstance(scan_callback_fn, types.FunctionType):
-                            action_type=scan_callback_fn(ret_value)
+                    if ret_value['bool_detect']: #악성코드가 발견 됐다?!
+                        if isinstance(detect_callback, types.FunctionType):
+                            action_type=detect_callback(ret_value)
 
                         if action_type == menu.MENU_QUIT:  #종료할거임?
                             return 0
-                        self.__disinfect_process(ret_value, disinfect_callback_fn, action_type)
+                        self.__disinfect_process(ret_value, treat_callback, action_type)
                     else:
                         if self.options['opt_list']:  # 모든 리스트 출력인가?
-                            if isinstance(scan_callback_fn, types.FunctionType):
-                                scan_callback_fn(ret_value)
+                            if isinstance(detect_callback, types.FunctionType):
+                                detect_callback(ret_value)
                         else:   #아니면 악성코드인 것만 출력
-                            if ret_value['result']:
+                            if ret_value['bool_detect']:
                                 if isinstance(cb_fn, types.FunctionType):
-                                    scan_callback_fn(ret_value)
+                                    detect_callback(ret_value)
 
                       #압축 파일 최종 치료 정리
-                    self.__update_process(t_file_info, update_callback_fn)
+                    self.__update_process(t_file_info, done_callback)
 
                     if not ret:
                         arc_file_list=self.arclist(t_file_info, ff)
@@ -387,7 +387,7 @@ class EngineInstance:
             except KeyboardInterrupt:
                 return 1    #키보드 종료
 
-        self.__update_process(None, update_callback_fn, True)   #최종 파일 정리
+        self.__update_process(None, done_callback, True)   #최종 파일 정리
 
         return 0    #정상적으로 검사 종료
 
@@ -549,7 +549,7 @@ class EngineInstance:
                         fs.set_archive(arc_id, rname, name, dname, mname, False, False, level+1)
                         file_scan_list.append(fs)
 
-                    self.result['Packed']+=1
+                    self.result['ZIP_Files']+=1
                     break
             except AttributeError:
                 continue
@@ -595,7 +595,7 @@ class EngineInstance:
         if action_type==menu.MENU_DISINFECT:    #치료 옵션이 설정됐나?
             d_ret=self.disinfect(d_fname, mid, eid)
             if d_ret:
-                self.result['Disinfected_files'] +=1    #치료 파일 수
+                self.result['Treated_Files'] +=1    #치료 파일 수
         elif action_type==menu.MENU_DELETE:     #삭제 옵션이 설정 됐나?
             try:
                 os.remove(d_fname)

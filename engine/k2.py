@@ -5,7 +5,7 @@ import os
 import sys
 from msvcrt import getch
 from optparse import OptionParser
-import clb.k2engine
+import clb.engine
 from ctypes import windll, Structure, c_short, c_ushort,  byref
 
 # 주요 상수
@@ -227,10 +227,10 @@ def scan_callback(ret_value):
     else:
         disp_name='%s'%(fs.root_file())
 
-    if ret_value['result']:
+    if ret_value['bool_detect']:
         state = 'infected'
 
-        vname = ret_value['virus_name']
+        vname = ret_value['virus']
         message = '%s : %s' %(state, vname)
         message_color = FOREGROUND_RED |FOREGROUND_INTENSITY
     else:
@@ -240,7 +240,7 @@ def scan_callback(ret_value):
     display_line(disp_name, message, message_color)
 
     if g_options.opt_prompt:     #프롬프트 옵션이 설정되었는가?
-        while True and ret_value['result']:
+        while True and ret_value['bool_detect']:
             cprint('Disinfect/Delete/Ignore/Quie? (d/l/i/q):', FOREGROUND_CYAN |FOREGROUND_INTENSITY)
             ch=getch().lower()
             print ch
@@ -315,8 +315,8 @@ def print_result(result):
     cprint('Results:\n', FOREGROUND_GREY | FOREGROUND_INTENSITY)
     cprint('Folders           :%d\n' % result['Folders'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
     cprint('Files             :%d\n' % result['Files'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
-    cprint('Infected files    :%d\n' % result['Infected_files'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
-    cprint('Identified viruses:%d\n' % result['Identified_viruses'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
+    cprint('Infected files    :%d\n' % result['Detected_Files'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
+    cprint('Identified viruses:%d\n' % result['Detected_Viruses'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
     cprint('I/O errors        :%d\n' % result['IO_errors'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
 
     print
@@ -352,7 +352,7 @@ def main():
         return 0
 
     #백신 엔진 구동
-    k2=clb.k2engine.Engine()    #엔진 클래스
+    k2=clb.engine.Engine()    #엔진 클래스
     if not k2.set_plugins('plugins'):   #플러그인 엔진 설정
         print('')
         print_error('CloudBread AntiVirus Engine set_plugins')
