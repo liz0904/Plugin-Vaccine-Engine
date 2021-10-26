@@ -44,7 +44,7 @@ class CLBMain:
     # 악성코드를 치료
     # 입력값 : filename    - 파일 이름
     #        : malware_id - 치료할 악성코드 ID
-    def disinfect(self, filename, malware_id):
+    def treat(self, filename, malware_id):
         try:
             # 악성코드 진단 결과 악성코드(0)인가?
             if malware_id == 0:

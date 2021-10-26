@@ -48,7 +48,7 @@ class CLBMain:
         return False, '', -1
 
     # 악성코드를 치료한다.
-    def disinfect(self, filename, virus_id):  # 악성코드 치료
+    def treat(self, filename, virus_id):  # 악성코드 치료
         try:
             # 악성코드 진단 결과에서 받은 ID 값이 0인가?
             if virus_id == 0:

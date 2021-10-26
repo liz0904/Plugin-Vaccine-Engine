@@ -449,7 +449,7 @@ class EngineInstance:
         try:
             # 악성코드를 진단한 플러그인 엔진에게만 치료를 요청
             instance = self.clbmain_instance[engine_id]
-            bool_treat = instance.disinfect(file, virus_id)
+            bool_treat = instance.treat(file, virus_id)
 
             if self.debug:
                 print('    [-] %s.treat() : %s' % (instance.__module__, bool_treat))
