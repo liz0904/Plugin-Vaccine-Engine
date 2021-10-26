@@ -15,7 +15,6 @@ YEAR = BUILD_DATE[len(BUILD_DATE) - 4:]
 
 gui_options = None  # 옵션
 
-
 # 콘솔에 색깔 출력을 위한 클래스 및 함수들
 FOREGROUND_BLACK = 0x0000
 FOREGROUND_BLUE = 0x0001
@@ -25,7 +24,7 @@ FOREGROUND_RED = 0x0004
 FOREGROUND_MAGENTA = 0x0005
 FOREGROUND_YELLOW = 0x0006
 FOREGROUND_GREY = 0x0007
-FOREGROUND_INTENSITY = 0x0008  # foreground color is intensified.
+FOREGROUND_INTENSITY = 0x0008
 
 SHORT = c_short
 WORD = c_ushort
@@ -111,19 +110,16 @@ def display_line(filename, message, message_color):
     cprint(fname + ' ', FOREGROUND_GREY)
     cprint(message + '\n', message_color)
 
-# -------------------------------------------------------------------------
-# print_k2logo()
-# 백신 로고를 출력한다
-# -------------------------------------------------------------------------
+# 백신 첫화면 출력
 def logo():
     logo = '''CloudBread Anti-Virus I (for %s) Ver %s (%s)
     Copyright (C) 2021-%s CloudBread. All rights reserved.
 '''
 
-    print('------------------------------------------------------------')
-    s = logo % (sys.platform.upper(), VERSION, BUILD_DATE, YEAR)
-    cprint(s, FOREGROUND_CYAN | FOREGROUND_INTENSITY)
-    print('------------------------------------------------------------')
+    print('===========================================================')
+    a = logo % (sys.platform.upper(), VERSION, BUILD_DATE, YEAR)
+    cprint(a, FOREGROUND_CYAN | FOREGROUND_INTENSITY)
+    print('===========================================================')
 
 
 # 파이썬의 옵션 파서 정의 (에러문 제어)
@@ -176,11 +172,11 @@ def define_options():
     return parser
 
 #사용법
-def print_usage():
+def usage():
     print('\nUsage: cloudbread.py path[s] [options]')
 
 # 백신 옵션을 분석
-def parser_options():
+def vaccine_options():
     parser = define_options()  # 백신 옵션 정의
 
     if len(sys.argv) < 2:
@@ -202,7 +198,7 @@ def parser_options():
 def print_options():
     options_string = '''Options:
         -f,  --files           scan files *
-        -r,  --arc             scan archives
+        -r,  --zip             scan archives
         -I,  --list            display all files
         -V,  --vlist           display virus list
         -p,  --prompt          prompt for action
@@ -217,25 +213,25 @@ def print_options():
 def detect_callback(detect_result):
     global gui_options
 
-    fs=detect_result['file_struct']
+    file_struct=detect_result['file_struct']
 
-    if len(fs.get_zip_structure_file()) !=0:
-        disp_name = '%s (%s)' % (fs.root_file(),
-                            fs.get_zip_structure_file())
+    if len(file_struct.get_zip_structure_file()) !=0:
+        name_show = '%s (%s)' % (file_struct.root_file(),
+                            file_struct.get_zip_structure_file())
     else:
-        disp_name='%s'%(fs.root_file())
+        name_show='%s'%(file_struct.root_file())
 
     if detect_result['bool_detect']:
-        state = 'infected'
+        state = 'detected'
 
-        vname = detect_result['virus']
-        message = '%s : %s' %(state, vname)
+        virus = detect_result['virus']
+        message = '%s : %s' %(state, virus)
         message_color = FOREGROUND_RED |FOREGROUND_INTENSITY
     else:
         message = 'ok'
         message_color = FOREGROUND_GREY | FOREGROUND_INTENSITY
 
-    display_line(disp_name, message, message_color)
+    display_line(name_show, message, message_color)
 
     if gui_options.opt_prompt:     #프롬프트 옵션이 설정되었는가?
         while True and detect_result['bool_detect']:
@@ -259,92 +255,88 @@ def detect_callback(detect_result):
     return clb.menu.MENU_IGNORE #default 값: 악성코드 치료 무시
 
 
-
-
 # disifect의 콜백 함수
 def treat_callback(detect_result, action_type):
     fs = detect_result['file_struct']
     message = ''
 
     if len(fs.get_zip_structure_file()) != 0:
-        disp_name = '%s (%s)' % (fs.root_file(), fs.get_zip_structure_file())
+        name_show = '%s (%s)' % (fs.root_file(), fs.get_zip_structure_file())
     else:
-        disp_name = '%s' % (fs.root_file())
+        name_show = '%s' % (fs.root_file())
 
     if fs.bool_modified():  # 수정 성공?
         if action_type == clb.menu.MENU_DISINFECT:
-            message = 'disinfected'
+            message = 'treated'
         elif action_type == clb.menu.MENU_DELETE:
             message = 'deleted'
 
         message_color = FOREGROUND_GREEN | FOREGROUND_INTENSITY
     else:   #수정 실패
         if action_type == clb.menu.MENU_DISINFECT:
-            message = 'disinfection failed'
+            message = 'treatment failed'
         elif action_type == clb.menu.MENU_DELETE:
             message = 'deletion failed'
 
         message_color = FOREGROUND_RED | FOREGROUND_INTENSITY
 
-    display_line(disp_name, message, message_color)
+    display_line(name_show, message, message_color)
 
-# -------------------------------------------------------------------------
 # update의 콜백 함수
-# -------------------------------------------------------------------------
-def delete_callback(ret_file_info):
-    if ret_file_info.bool_modified():  # 수정되었다면 결과 출력
-        disp_name = ret_file_info.get_target_file()
+def delete_callback(file):
+    if file.bool_modified():  # 수정되었다면 결과 출력
+        name_show = file.get_target_file()
 
         message = 'delete'
         message_color = FOREGROUND_GREEN | FOREGROUND_INTENSITY
 
-        display_line(disp_name, message, message_color)
+        display_line(name_show, message, message_color)
 
 
 
 # print_result(result)
 # 악성코드 검사 결과를 출력한다.
 # 입력값 : result - 악성코드 검사 결과
-def print_result(result):
+def print_detect(result):
     print
     print
 
     cprint('Results:\n', FOREGROUND_GREY | FOREGROUND_INTENSITY)
-    cprint('Folders           :%d\n' % result['Folders'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
-    cprint('Files             :%d\n' % result['Files'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
-    cprint('Detect_Files      :%d\n' % result['Detected_Files'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
-    cprint('Detect_Viruses    :%d\n' % result['Detected_Viruses'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
-    cprint('I/O errors        :%d\n' % result['IO_errors'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
+    cprint('Folders             :%d\n' % result['Folders'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
+    cprint('Files               :%d\n' % result['Files'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
+    cprint('Detected Files      :%d\n' % result['Detected_Files'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
+    cprint('Detected Viruses    :%d\n' % result['Detected_Viruses'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
+    cprint('I/O errors          :%d\n' % result['IO_errors'], FOREGROUND_GREY | FOREGROUND_INTENSITY)
 
     print
 
 #listvirus의 콜백함수
 def listvirus_callback(plugin_name, vnames):
-    for vname in vnames:
-        print('%-50s [%s.kmd]'%(vname, plugin_name))
+    for i in vnames:
+        print('%-50s [%s.kmd]'%(i, plugin_name))
 
-# main()
+
 def main():
     global gui_options
 
-    options, args = parser_options()    #옵션 분석
+    options, args = vaccine_options()    #옵션 분석
     gui_options=options   #global options 지정
 
     logo()  #로고 출력
 
     # 잘못된 옵션인가?
     if options == 'NONE_OPTION':  # 옵션이 없는 경우
-        print_usage()
+        usage()
         print_options()
         return 0
     elif options == 'ILLEGAL_OPTION':  # 정의되지 않은 옵션을 사용한 경우
-        print_usage()
+        usage()
         print('Error: %s' % args)  # 에러 메시지가 담겨 있음
         return 0
 
     # Help 옵션을 사용한 경우 또는 인자 값이 없는 경우
     if options.opt_help:
-        print_usage()
+        usage()
         print_options()
         return 0
 
@@ -395,8 +387,8 @@ def main():
                     print_error('Invalid path: \'%s\''%scan_path)
 
             #악성코드 검사 결과 출력
-            ret=clb_engine_inst.get_result()
-            print_result(ret)
+            show_result=clb_engine_inst.get_result()
+            print_detect(show_result)
 
     clb_engine_inst.uninit()
 
