@@ -62,7 +62,7 @@ class CLBMain:
     def virus_list(self):  # 진단 가능한 악성코드 리스트
         list = list()  # 리스트형 변수 선언
 
-        list.append('EICAR-Test-File (not a virus)')  # 진단/치료하는 악성코드 이름 등록
+        list.append('EICAR-Test-File')  # 진단/치료하는 악성코드 이름 등록
 
         return list
 
