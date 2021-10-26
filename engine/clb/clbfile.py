@@ -253,7 +253,7 @@ class CLB(CLBConstants):
                                 + self.RC4_KEY_LENGTH]
         return rsa.crypt(clb_rc4_key, self.rsa_public)
 
-    # kmd 파일의 body를 얻는다.
+    #clb 파일의 body를 얻는다.
     # 리턴값 : body
     def get_body(self):
         clb_body = self.encrypted_data[self.RC4_KEY_POSITION
