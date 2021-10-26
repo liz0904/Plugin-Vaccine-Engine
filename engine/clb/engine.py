@@ -228,6 +228,7 @@ class EngineInstance:
             print('[*] CLBMain.having_virus_list() :')
 
         for i in self.clbmain_instance:
+            print(i)  # 오류 : 값이 들어가는데 처리가 되지 않음.-----------------------------------------
             try:
                 list = i.having_virus_list()
 
@@ -269,7 +270,7 @@ class EngineInstance:
     #          callback - 검사 시 출력 화면 관련 콜백 함수
     # 리턴값 : 0 - 성공
     #          1 - Ctrl+C를 이용해서 악성코드 검사 강제 종료
-    def detect(self, filename, *callback):        #---------------------------------------이거 시발 왜 함수명 바꾸면 지랄이야------------
+    def detect(self, filename, *callback):
         self.rezip_info=[]
         detect_callback=None   #악성코드 검사 콜백 함수
         treat_callback=None  #악성코드 치료 콜백 함수

@@ -58,9 +58,9 @@ class CLBMain:
     # 진단/치료 가능한 악성코드의 리스트
     # 리턴값 : 악성코드 리스트
     def having_virus_list(self):
-        list = list()  # 리스트형 변수 선언
-        list.append(self.name)  # 진단/치료하는 악성코드 이름 등록
-        return list
+        list_view = list()  # 리스트형 변수 선언
+        list_view.append(self.name)  # 진단/치료하는 악성코드 이름 등록
+        return list_view
 
     # 플러그인 엔진의 주요 정보
     def getinfo(self):
